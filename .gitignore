@@ -25,3 +25,6 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Outils de développement locaux — ne pas publier
+.claude/
