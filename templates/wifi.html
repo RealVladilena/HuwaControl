@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}WiFi{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title"><i class="fa-solid fa-wifi"></i> WiFi</h1>
+  <button class="btn btn--ghost" id="btn-refresh">
+    <i class="fa-solid fa-rotate"></i> Rafraîchir
+  </button>
+</div>
+
+<!-- Résumé rapide -->
+<div class="stats-row" id="wifi-summary" style="margin-bottom:1.5rem">
+  <div class="stat-card">
+    <div class="stat-card__icon"><i class="fa-solid fa-tower-broadcast"></i></div>
+    <div class="stat-card__body">
+      <div class="stat-card__label">Interfaces WiFi</div>
+      <div class="stat-card__val" id="wifi-iface-count">—</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card__icon"><i class="fa-solid fa-mobile-screen"></i></div>
+    <div class="stat-card__body">
+      <div class="stat-card__label">Clients WiFi associés</div>
+      <div class="stat-card__val" id="wifi-client-count">—</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card__icon" style="color:#00cc44"><i class="fa-solid fa-arrow-up"></i></div>
+    <div class="stat-card__body">
+      <div class="stat-card__label">Débit IN total</div>
+      <div class="stat-card__val" id="wifi-total-in" style="font-size:1.3rem">—</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card__icon" style="color:#cc0000"><i class="fa-solid fa-arrow-down"></i></div>
+    <div class="stat-card__body">
+      <div class="stat-card__label">Débit OUT total</div>
+      <div class="stat-card__val" id="wifi-total-out" style="font-size:1.3rem">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- Interfaces WiFi -->
+<div class="card" style="margin-bottom:1.5rem">
+  <div class="card__header">
+    <span><i class="fa-solid fa-diagram-project"></i> Interfaces radio</span>
+  </div>
+  <div class="card__body card__body--no-pad">
+    <table class="table" id="wifi-ifaces-table">
+      <thead>
+        <tr><th>Interface</th><th>Statut</th><th>Vitesse</th><th>IN</th><th>OUT</th><th>Erreurs</th></tr>
+      </thead>
+      <tbody id="wifi-ifaces-tbody">
+        <tr><td colspan="6" class="txt-muted txt-center">Chargement…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Clients WiFi -->
+<div class="card">
+  <div class="card__header">
+    <span><i class="fa-solid fa-mobile-screen"></i> Clients WiFi associés</span>
+    <span class="txt-muted" style="font-size:.8rem">Via Huawei WLAN MIB</span>
+  </div>
+  <div class="card__body card__body--no-pad">
+    <table class="table" id="wifi-clients-table">
+      <thead>
+        <tr><th>MAC</th><th>SSID</th><th>Bande</th><th>RSSI</th></tr>
+      </thead>
+      <tbody id="wifi-clients-tbody">
+        <tr><td colspan="4" class="txt-muted txt-center">Chargement…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.stats-row { display:flex; gap:1rem; flex-wrap:wrap; }
+.stat-card {
+  flex:1; min-width:160px;
+  background:var(--bg-card); border:1px solid var(--border); border-radius:10px;
+  padding:1rem 1.25rem; display:flex; align-items:center; gap:1rem;
+}
+.stat-card__icon { font-size:1.5rem; color:var(--accent); opacity:.8; }
+.stat-card__label { font-size:.75rem; color:var(--txt-muted); text-transform:uppercase; letter-spacing:.05em; }
+.stat-card__val { font-size:1.6rem; font-weight:700; }
+</style>
+<script>
+function fmtBps(bps) {
+  if (bps == null) return '—';
+  if (bps >= 1e9) return (bps/1e9).toFixed(2) + ' Gbps';
+  if (bps >= 1e6) return (bps/1e6).toFixed(2) + ' Mbps';
+  if (bps >= 1e3) return (bps/1e3).toFixed(1) + ' Kbps';
+  return Math.round(bps) + ' bps';
+}
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function rssiBar(rssi) {
+  if (rssi == null) return '—';
+  const pct = Math.max(0, Math.min(100, (rssi + 100) * 2));
+  const col = pct > 60 ? '#00cc44' : pct > 30 ? '#e07000' : '#cc0000';
+  return `<span style="color:${col}">${rssi} dBm</span>`;
+}
+
+function loadWifi() {
+  const btn = document.getElementById('btn-refresh');
+  btn.querySelector('i').classList.add('fa-spin');
+
+  fetch('/api/wifi')
+    .then(r => r.json())
+    .then(d => {
+      // Interfaces
+      const ifaces  = d.interfaces || [];
+      const clients = d.clients    || [];
+
+      document.getElementById('wifi-iface-count').textContent  = ifaces.length;
+      document.getElementById('wifi-client-count').textContent = clients.length;
+
+      let totalIn = 0, totalOut = 0;
+      ifaces.forEach(i => { totalIn += i.in_bps || 0; totalOut += i.out_bps || 0; });
+      document.getElementById('wifi-total-in').textContent  = fmtBps(totalIn);
+      document.getElementById('wifi-total-out').textContent = fmtBps(totalOut);
+
+      const itbody = document.getElementById('wifi-ifaces-tbody');
+      if (!ifaces.length) {
+        itbody.innerHTML = '<tr><td colspan="6" class="txt-muted txt-center">Aucune interface WiFi détectée</td></tr>';
+      } else {
+        itbody.innerHTML = ifaces.map(i => `<tr>
+          <td class="txt-mono"><b>${esc(i.if_name)}</b></td>
+          <td>${i.if_status === 1
+            ? '<span class="badge badge--up">UP</span>'
+            : '<span class="badge badge--down">DOWN</span>'}</td>
+          <td>${i.speed_mbps ? i.speed_mbps + ' Mbps' : '—'}</td>
+          <td class="txt-green">${esc(i.in_bps_fmt  || '—')}</td>
+          <td class="txt-red" >${esc(i.out_bps_fmt || '—')}</td>
+          <td class="txt-warn">${((i.in_errors||0)+(i.out_errors||0)) || '0'}</td>
+        </tr>`).join('');
+      }
+
+      const ctbody = document.getElementById('wifi-clients-tbody');
+      if (!clients.length) {
+        ctbody.innerHTML = '<tr><td colspan="4" class="txt-muted txt-center">' +
+          'Aucun client WiFi — le routeur supporte peut-être pas le WLAN MIB, ' +
+          'consulte la page <a href="/clients">Clients</a> pour la liste ARP.</td></tr>';
+      } else {
+        ctbody.innerHTML = clients.map(c => `<tr>
+          <td class="txt-mono" style="font-size:.85rem">${esc(c.mac)}</td>
+          <td>${esc(c.ssid || '—')}</td>
+          <td>${esc(c.band || '—')}</td>
+          <td>${rssiBar(c.rssi)}</td>
+        </tr>`).join('');
+      }
+    })
+    .catch(() => {
+      document.getElementById('wifi-ifaces-tbody').innerHTML =
+        '<tr><td colspan="6" class="txt-red txt-center">Erreur SNMP</td></tr>';
+    })
+    .finally(() => btn.querySelector('i').classList.remove('fa-spin'));
+}
+
+document.getElementById('btn-refresh').addEventListener('click', loadWifi);
+document.addEventListener('routerChanged', loadWifi);
+loadWifi();
+setInterval(loadWifi, 60000);
+</script>
+{% endblock %}

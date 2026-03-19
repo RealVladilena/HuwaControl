@@ -1,0 +1,474 @@
+{% extends "base.html" %}
+{% block title %}Aperçu{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title"><i class="fa-solid fa-gauge-high"></i> Aperçu temps réel</h1>
+  <span class="page-subtitle" id="router-subtitle">
+    {{ router.name if router else '—' }}{% if router %} — {{ router.ip }}{% endif %}
+  </span>
+</div>
+
+<!-- KPI Cards -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-card__icon kpi-card__icon--cpu"><i class="fa-solid fa-microchip"></i></div>
+    <div class="kpi-card__body">
+      <div class="kpi-card__label">CPU</div>
+      <div class="kpi-card__value" id="kpi-cpu">—</div>
+      <div class="kpi-card__bar"><div class="kpi-card__bar-fill kpi-card__bar-fill--cpu" id="bar-cpu"></div></div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__icon kpi-card__icon--mem"><i class="fa-solid fa-memory"></i></div>
+    <div class="kpi-card__body">
+      <div class="kpi-card__label">Mémoire</div>
+      <div class="kpi-card__value" id="kpi-mem">—</div>
+      <div class="kpi-card__bar"><div class="kpi-card__bar-fill kpi-card__bar-fill--mem" id="bar-mem"></div></div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__icon kpi-card__icon--temp"><i class="fa-solid fa-thermometer-half"></i></div>
+    <div class="kpi-card__body">
+      <div class="kpi-card__label">Température</div>
+      <div class="kpi-card__value" id="kpi-temp">—</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__icon kpi-card__icon--uptime"><i class="fa-solid fa-clock"></i></div>
+    <div class="kpi-card__body">
+      <div class="kpi-card__label">Uptime</div>
+      <div class="kpi-card__value" id="kpi-uptime">—</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__icon kpi-card__icon--iface"><i class="fa-solid fa-plug"></i></div>
+    <div class="kpi-card__body">
+      <div class="kpi-card__label">Interfaces</div>
+      <div class="kpi-card__value">
+        <span class="txt-green" id="kpi-if-up">—</span>
+        <span class="txt-muted"> / <span id="kpi-if-total">—</span></span>
+      </div>
+      <div class="kpi-card__sublabel">UP / Total</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__icon kpi-card__icon--pkt"><i class="fa-solid fa-paper-plane"></i></div>
+    <div class="kpi-card__body">
+      <div class="kpi-card__label">Paquets</div>
+      <div class="kpi-card__value" id="kpi-pps-in" style="font-size:1.1rem">—</div>
+      <div class="kpi-card__sublabel" id="kpi-pps-out">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- Graphiques : gauche = WAN/CPU (toggle), droite = heatmap (fixe) -->
+<div class="row-2col mt-4" style="align-items:stretch">
+
+  <!-- Carte gauche : WAN ou CPU/RAM -->
+  <div class="card">
+    <div class="card__header">
+      <span id="chart-header-label"><i class="fa-solid fa-globe"></i> Débit WAN</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="txt-muted" id="wan-iface-hint" style="font-size:.75rem"></span>
+        <div class="btn-group" id="chart-mode-group">
+          <button class="btn-period" data-mode="wan"><i class="fa-solid fa-globe"></i> WAN</button>
+          <button class="btn-period" data-mode="sys"><i class="fa-solid fa-microchip"></i> CPU/RAM</button>
+        </div>
+      </div>
+    </div>
+    <div class="card__body">
+      <!-- WAN chart -->
+      <div id="section-wan">
+        <div class="chart-label-row">
+          <span id="wan-if-name" class="txt-muted">Interface WAN</span>
+          <span id="wan-if-badge" style="font-size:.8rem;color:#fff"></span>
+        </div>
+        <div style="position:relative;height:150px"><canvas id="chart-wan"></canvas></div>
+      </div>
+      <!-- CPU+RAM charts -->
+      <div id="section-sys" style="display:none">
+        <div class="chart-label-row">
+          <span class="txt-muted"><i class="fa-solid fa-microchip" style="color:var(--red)"></i> CPU</span>
+          <span id="cpu-current" style="font-size:.8rem;color:#fff"></span>
+        </div>
+        <div style="position:relative;height:70px;margin-bottom:10px"><canvas id="chart-cpu"></canvas></div>
+        <div class="chart-label-row">
+          <span class="txt-muted"><i class="fa-solid fa-memory" style="color:var(--orange)"></i> Mémoire</span>
+          <span id="mem-current" style="font-size:.8rem;color:#fff"></span>
+        </div>
+        <div style="position:relative;height:70px"><canvas id="chart-mem"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Carte droite : Graphique barre alertes -->
+  <div class="card">
+    <div class="card__header">
+      <span><i class="fa-solid fa-fire" style="color:var(--red)"></i> Alertes</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="txt-muted" id="heatmap-total" style="font-size:.8rem"></span>
+        <div class="btn-group" id="alert-period-group">
+          <button class="btn-period btn-period--active" data-days="30">30j</button>
+          <button class="btn-period" data-days="60">60j</button>
+          <button class="btn-period" data-days="90">90j</button>
+        </div>
+      </div>
+    </div>
+    <div class="card__body">
+      <div style="position:relative;height:150px">
+        <canvas id="chart-alerts-bar"></canvas>
+      </div>
+      <!-- Légende gravité -->
+      <div style="display:flex;gap:14px;margin-top:10px;font-size:.75rem;
+                  color:var(--txt-muted);justify-content:center;flex-wrap:wrap">
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;
+          background:#3a7bd5;margin-right:4px;vertical-align:middle"></span>1–2 alertes</span>
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;
+          background:#d58c00;margin-right:4px;vertical-align:middle"></span>3–5 alertes</span>
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;
+          background:#cc3300;margin-right:4px;vertical-align:middle"></span>6–9 alertes</span>
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;
+          background:#ff1100;box-shadow:0 0 4px #ff1100;margin-right:4px;vertical-align:middle"></span>10+ critique</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Tableau interfaces actives -->
+<div class="card mt-4">
+  <div class="card__header">
+    <span>
+      <i class="fa-solid fa-diagram-project"></i> Interfaces actives
+      <span class="txt-muted" id="if-hidden-note" style="font-size:.78rem;margin-left:6px"></span>
+    </span>
+    <a href="{{ url_for('interfaces') }}" class="card__link">Détail <i class="fa-solid fa-arrow-right"></i></a>
+  </div>
+  <div class="card__body card__body--no-pad">
+    <table class="table">
+      <thead>
+        <tr><th>#</th><th>Nom</th><th>Statut</th><th>Vitesse</th><th>IN bps</th><th>OUT bps</th><th>IN pps</th><th>OUT pps</th></tr>
+      </thead>
+      <tbody id="iface-tbody">
+        <tr><td colspan="8" class="txt-muted txt-center">Chargement…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Tunnels VPN -->
+<div class="card mt-4">
+  <div class="card__header">
+    <span><i class="fa-solid fa-shield-halved"></i> Tunnels VPN</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="card__badge" id="vpn-count">—</span>
+      <a href="{{ url_for('vpn_page') }}" class="card__link">Détail <i class="fa-solid fa-arrow-right"></i></a>
+    </div>
+  </div>
+  <div id="vpn-body">
+    <p class="txt-muted txt-center" style="padding:14px 16px">Chargement…</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function setText(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+function setHtml(id, v) { const el = document.getElementById(id); if (el) el.innerHTML  = v; }
+function setStyle(id, p, v) { const el = document.getElementById(id); if (el) el.style[p] = v; }
+function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtBpsTip(ctx) {
+  const v = ctx.parsed.y;
+  if (v >= 1e9) return ctx.dataset.label + ': ' + (v/1e9).toFixed(2) + ' Gbps';
+  if (v >= 1e6) return ctx.dataset.label + ': ' + (v/1e6).toFixed(2) + ' Mbps';
+  if (v >= 1e3) return ctx.dataset.label + ': ' + (v/1e3).toFixed(1) + ' Kbps';
+  return ctx.dataset.label + ': ' + Math.round(v) + ' bps';
+}
+
+// Charts
+const chartWan = buildLineChart('chart-wan', ['IN','OUT'],
+  ['#00cc44','#cc0000'], ['rgba(0,204,68,0.12)','rgba(204,0,0,0.12)'],
+  { yFmt: fmtBpsAxis, tooltipFmt: fmtBpsTip });
+const chartCpu = buildLineChart('chart-cpu', ['CPU %'],   ['#cc0000'], ['rgba(204,0,0,0.15)']);
+const chartMem = buildLineChart('chart-mem', ['Mém %'],   ['#e07000'], ['rgba(224,112,0,0.15)']);
+
+// WAN interface index (loaded from settings)
+let wanIfIndex = 8;
+let wanIfName  = 'WAN';
+
+// Load WAN setting then start
+fetch('/api/settings').then(r => r.json()).then(cfg => {
+  wanIfIndex = parseInt(cfg.wan_if_index) || 8;
+  loadOverview();
+  loadWanChart();
+  loadHeatmap();
+  loadVpn();
+}).catch(() => {
+  loadOverview();
+  loadHeatmap();
+  loadVpn();
+});
+
+// Chart mode toggle
+let chartMode = localStorage.getItem('overview_chart') || 'wan';
+function applyChartMode(mode) {
+  chartMode = mode;
+  localStorage.setItem('overview_chart', mode);
+  document.getElementById('section-wan').style.display = mode === 'wan' ? '' : 'none';
+  document.getElementById('section-sys').style.display = mode === 'sys' ? '' : 'none';
+  document.querySelectorAll('#chart-mode-group .btn-period').forEach(b =>
+    b.classList.toggle('btn-period--active', b.dataset.mode === mode));
+  const labels = {
+    wan: '<i class="fa-solid fa-globe"></i> Débit WAN',
+    sys: '<i class="fa-solid fa-microchip"></i> CPU / Mémoire'
+  };
+  setHtml('chart-header-label', labels[mode]);
+  if (mode === 'sys') loadSysCharts();
+  else loadWanChart();
+}
+document.querySelectorAll('#chart-mode-group .btn-period').forEach(b =>
+  b.addEventListener('click', () => applyChartMode(b.dataset.mode)));
+applyChartMode(chartMode);
+
+// Interface filter
+function isSystemIface(name) {
+  const n = (name || '').toLowerCase();
+  return n === 'inloopback0' || n === 'null0' || n.startsWith('inloopback');
+}
+
+function loadOverview() {
+  fetch(apiUrl('/api/status')).then(r => r.json()).then(d => {
+    setText('kpi-cpu',    d.cpu_usage   != null ? d.cpu_usage.toFixed(1)    + '%'  : '—');
+    setText('kpi-mem',    d.mem_usage   != null ? d.mem_usage.toFixed(1)    + '%'  : '—');
+    setText('kpi-temp',   d.temperature != null ? Math.round(d.temperature) + '°C' : '—');
+    setText('kpi-uptime', d.uptime_fmt  || '—');
+    setText('kpi-if-up',    d.interfaces?.up    ?? '—');
+    setText('kpi-if-total', d.interfaces?.total ?? '—');
+    setStyle('bar-cpu', 'width', (d.cpu_usage || 0) + '%');
+    setStyle('bar-mem', 'width', (d.mem_usage || 0) + '%');
+  });
+
+  fetch(apiUrl('/api/interfaces')).then(r => r.json()).then(ifaces => {
+    const sysIfs  = ifaces.filter(i => isSystemIface(i.if_name));
+    const downIfs = ifaces.filter(i => !isSystemIface(i.if_name) && i.if_status !== 1);
+    const upIfs   = ifaces.filter(i => !isSystemIface(i.if_name) && i.if_status === 1);
+    const hidden  = sysIfs.length + downIfs.length;
+
+    const noteEl = document.getElementById('if-hidden-note');
+    if (noteEl && hidden > 0)
+      noteEl.textContent = `(${hidden} masquée${hidden>1?'s':''} — ${downIfs.length} DOWN, ${sysIfs.length} système)`;
+
+    const tot = [...upIfs, ...downIfs];
+    const totalIn  = tot.reduce((s,i) => s + (i.in_pps  || 0), 0);
+    const totalOut = tot.reduce((s,i) => s + (i.out_pps || 0), 0);
+    function fmtPps(v) {
+      if (v >= 1e6) return (v/1e6).toFixed(1) + 'M pps';
+      if (v >= 1e3) return (v/1e3).toFixed(1) + 'K pps';
+      return Math.round(v) + ' pps';
+    }
+    setText('kpi-pps-in',  '▲ ' + fmtPps(totalIn));
+    setText('kpi-pps-out', '▼ ' + fmtPps(totalOut));
+
+    const tbody = document.getElementById('iface-tbody');
+    tbody.innerHTML = upIfs.length ? upIfs.map(i => `
+      <tr>
+        <td class="txt-muted">${i.if_index}</td>
+        <td class="txt-mono">${esc(i.display_name || i.if_name || '—')}</td>
+        <td><span class="badge badge--up"><span class="dot dot--up"></span> UP</span></td>
+        <td>${i.speed_mbps ? i.speed_mbps + ' Mbps' : '—'}</td>
+        <td class="txt-green">${i.in_bps_fmt  || '—'}</td>
+        <td class="txt-red">${i.out_bps_fmt   || '—'}</td>
+        <td class="txt-muted" style="font-size:.85rem">${i.in_pps_fmt  || '—'}</td>
+        <td class="txt-muted" style="font-size:.85rem">${i.out_pps_fmt || '—'}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="8" class="txt-muted txt-center">Aucune interface active</td></tr>';
+
+    // Update WAN interface name hint
+    const wan = ifaces.find(i => i.if_index === wanIfIndex);
+    if (wan) {
+      wanIfName = wan.display_name || wan.if_name;
+      setText('wan-if-name', wanIfName);
+      setText('wan-iface-hint', wanIfName);
+    }
+  });
+}
+
+function loadWanChart() {
+  if (chartMode !== 'wan') return;
+  fetch(apiUrl('/api/interfaces/' + wanIfIndex + '/bps', { hours: 1 }))
+    .then(r => r.json())
+    .then(d => {
+      updateChart(chartWan, d.labels, [d.in_bps, d.out_bps]);
+      const lastIn = d.in_bps?.at(-1), lastOut = d.out_bps?.at(-1);
+      if (lastIn != null)
+        setText('wan-if-badge', '▲ ' + fmtBpsAxis(lastIn) + '  ▼ ' + fmtBpsAxis(lastOut ?? 0));
+    });
+}
+
+function loadSysCharts() {
+  fetch(apiUrl('/api/performance', { hours: 1 })).then(r => r.json()).then(d => {
+    updateChart(chartCpu, d.labels, [d.cpu]);
+    updateChart(chartMem, d.labels, [d.mem]);
+    const lc = d.cpu.at(-1), lm = d.mem.at(-1);
+    setText('cpu-current', lc != null ? lc.toFixed(1) + '%' : '—');
+    setText('mem-current', lm != null ? lm.toFixed(1) + '%' : '—');
+  });
+}
+
+// VPN
+function loadVpn() {
+  fetch(apiUrl('/api/vpn')).then(r => r.json()).then(d => {
+    const tunnels = d.tunnels || [], ikeSas = d.ike_sas || [];
+    setText('vpn-count', tunnels.length + ikeSas.length);
+    const body = document.getElementById('vpn-body');
+    if (!tunnels.length && !ikeSas.length) {
+      body.innerHTML = '<p class="txt-muted txt-center" style="padding:12px 16px">Aucun tunnel VPN détecté</p>';
+      return;
+    }
+    const rows = tunnels.map(t => `
+      <div class="vpn-tunnel-row">
+        <span>${t.if_status===1?'<span class="dot dot--up"></span>':'<span class="dot dot--down"></span>'}</span>
+        <span class="vpn-tunnel-name">${esc(t.display_name || t.if_name)}</span>
+        <span class="vpn-tunnel-meta">${t.if_status===1?'UP':'DOWN'}</span>
+        <span class="txt-green" style="font-size:.85rem">${t.in_bps_fmt||'—'}</span>
+        <span class="txt-red"   style="font-size:.85rem">${t.out_bps_fmt||'—'}</span>
+      </div>`).concat(ikeSas.map(s => `
+      <div class="vpn-tunnel-row">
+        <span>${s.status===1?'<span class="dot dot--up"></span>':'<span class="dot dot--unknown"></span>'}</span>
+        <span class="vpn-tunnel-name">${esc(s.name||'IKE SA')}</span>
+        <span class="vpn-tunnel-meta">${s.remote?'→ '+esc(s.remote):''}</span>
+        <span class="txt-muted" style="font-size:.85rem">${s.status===1?'Établi':'—'}</span>
+        <span></span>
+      </div>`));
+    body.innerHTML = rows.join('');
+  }).catch(() => { setHtml('vpn-body', '<p class="txt-muted txt-center" style="padding:12px 16px">—</p>'); });
+}
+
+// ── Graphique alertes (bar chart) ─────────────────────────────────────────────
+let _alertChart = null;
+let _alertDays  = 30;
+
+function _barColor(n) {
+  if (!n)    return 'rgba(255,255,255,0.06)';
+  if (n <= 2) return '#3a7bd5';   // bleu : faible
+  if (n <= 5) return '#d58c00';   // ambre : modéré
+  if (n <= 9) return '#cc3300';   // orange-rouge : élevé
+  return '#ff1100';               // rouge vif : critique
+}
+function _barBorder(n) {
+  if (!n)    return 'transparent';
+  if (n <= 2) return '#5a9bf5';
+  if (n <= 5) return '#f5a800';
+  if (n <= 9) return '#ee4400';
+  return '#ff3322';
+}
+
+function loadHeatmap(days) {
+  days = days || _alertDays;
+  fetch(apiUrl('/api/events/daily', { days }))
+    .then(r => r.json())
+    .then(data => {
+      const total = data.reduce((s, d) => s + (d.count || 0), 0);
+      setText('heatmap-total',
+        total ? total + ' alerte' + (total > 1 ? 's' : '') : 'Aucune alerte');
+
+      const labels = data.map(d => {
+        const dt = new Date(d.day + 'T12:00:00');
+        return dt.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+      });
+      const counts = data.map(d => d.count || 0);
+      const colors  = counts.map(_barColor);
+      const borders = counts.map(_barBorder);
+
+      if (_alertChart) { _alertChart.destroy(); _alertChart = null; }
+      const ctx = document.getElementById('chart-alerts-bar')?.getContext('2d');
+      if (!ctx) return;
+
+      _alertChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            data:            counts,
+            backgroundColor: colors,
+            borderColor:     borders,
+            borderWidth:     1,
+            borderRadius:    4,
+            borderSkipped:   false,
+          }],
+        },
+        options: {
+          responsive:          true,
+          maintainAspectRatio: false,
+          animation:           false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items) => labels[items[0].dataIndex],
+                label: (item) => {
+                  const n = item.raw;
+                  if (!n) return 'Aucune alerte';
+                  const lvl = n >= 10 ? 'Critique' : n >= 6 ? 'Élevé' : n >= 3 ? 'Modéré' : 'Faible';
+                  return `${n} alerte${n > 1 ? 's' : ''} — ${lvl}`;
+                },
+              },
+              backgroundColor: '#1a1a1a',
+              borderColor:     'rgba(255,255,255,0.12)',
+              borderWidth:     1,
+              titleColor:      '#eee',
+              bodyColor:       '#aaa',
+              padding:         8,
+            },
+          },
+          scales: {
+            x: {
+              ticks: {
+                color:         '#555',
+                font:          { size: 9 },
+                maxTicksLimit: 10,
+                maxRotation:   0,
+              },
+              grid:   { display: false },
+              border: { display: false },
+            },
+            y: {
+              min: 0,
+              ticks: {
+                color:         '#555',
+                font:          { size: 9 },
+                stepSize:      1,
+                maxTicksLimit: 5,
+              },
+              grid:   { color: 'rgba(255,255,255,0.04)' },
+              border: { display: false },
+            },
+          },
+        },
+      });
+    })
+    .catch(console.error);
+}
+
+// Sélecteur de période
+document.querySelectorAll('#alert-period-group .btn-period').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#alert-period-group .btn-period')
+      .forEach(b => b.classList.remove('btn-period--active'));
+    btn.classList.add('btn-period--active');
+    _alertDays = parseInt(btn.dataset.days);
+    loadHeatmap(_alertDays);
+  });
+});
+
+loadOverview();
+setInterval(loadOverview, 30000);
+setInterval(loadWanChart, 30000);
+
+document.addEventListener('routerChanged', () => {
+  loadOverview(); loadVpn(); loadHeatmap();
+  if (chartMode === 'wan') loadWanChart();
+});
+</script>
+{% endblock %}

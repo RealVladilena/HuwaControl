@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -rn \"simulate\\\\|SIMULATE\\\\|DB_PATH\\\\|sqlite\" l:/HuwaControl --include=*.py --include=*.html --include=*.yml)",
+      "Bash(grep -rn \"send_discord\\\\|Interface DOWN\\\\|if_status\\\\|iface_down\\\\|interface.*down\" l:/HuwaControl/ --include=*.py -i)",
+      "Bash(\"l:/HuwaControl/LICENSE\":*)",
+      "Bash(sed -i 's/## Installation rapide \\(1 commande\\)/## Installation/' \"l:/HuwaControl/README.md\")",
+      "Bash(sed -i '/git clone.*huwacontrol/,/Première connexion/c\\\\```bash\\\\ngit clone https://github.com/TON_USERNAME/huwacontrol.git\\\\ncd huwacontrol\\\\ndocker compose up -d --build\\\\n```\\\\n\\\\nAccès : **http://localhost:8080**  \\\\nPremière connexion → assistant de configuration guidé.\\\\n\\\\n> **Production** : copiez `.env.example` → `.env` et définissez des mots de passe forts avant de démarrer.' \"l:/HuwaControl/README.md\")",
+      "Bash(\"l:/HuwaControl/docker-compose.portainer.yml\":*)"
+    ]
+  }
+}

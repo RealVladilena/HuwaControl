@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% block title %}Ping / Latence{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title"><i class="fa-solid fa-satellite-dish"></i> Ping / Latence</h1>
+  <span class="page-subtitle">Disponibilité et RTT des hôtes surveillés</span>
+</div>
+
+<!-- Toolbar -->
+<div class="toolbar" style="gap:8px;flex-wrap:wrap">
+  <div class="btn-group" id="period-group">
+    <button class="btn-period btn-period--active" data-h="1">1h</button>
+    <button class="btn-period" data-h="6">6h</button>
+    <button class="btn-period" data-h="24">24h</button>
+    <button class="btn-period" data-h="168">7j</button>
+  </div>
+  <button class="btn btn--primary" style="font-size:12px;padding:4px 10px" id="btn-add-target">
+    <i class="fa-solid fa-plus"></i> Ajouter une cible
+  </button>
+  <span class="txt-muted" style="font-size:.85rem;margin-left:auto">
+    Rafraîchissement automatique toutes les 60s
+  </span>
+</div>
+
+<!-- Formulaire ajout rapide (caché par défaut) -->
+<div class="card mt-4" id="add-target-form" style="display:none">
+  <div class="card__header">
+    <span><i class="fa-solid fa-plus"></i> Nouvelle cible ping</span>
+    <button class="btn-icon" onclick="document.getElementById('add-target-form').style.display='none'">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+  <div class="card__body" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+    <div class="form-group" style="margin:0;flex:1;min-width:160px">
+      <label class="form-label">Label</label>
+      <input class="form-input" type="text" id="new-ping-label" placeholder="ex : Passerelle">
+    </div>
+    <div class="form-group" style="margin:0;flex:1;min-width:160px">
+      <label class="form-label">Hôte / IP</label>
+      <input class="form-input" type="text" id="new-ping-host" placeholder="ex : 192.168.1.1">
+    </div>
+    <button class="btn btn--primary" id="btn-save-target" style="margin-bottom:0">
+      <i class="fa-solid fa-check"></i> Ajouter
+    </button>
+    <div id="add-target-err" style="font-size:.85rem;color:#ff4444;margin-top:4px;width:100%"></div>
+  </div>
+</div>
+
+<div id="targets-container" class="mt-4">
+  <p class="txt-muted txt-center">Chargement…</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let hoursFilter = 1;
+let allTargets  = [];
+
+function fmtRtt(v) {
+  if (v === null || v === undefined) return '—';
+  return v.toFixed(1) + ' ms';
+}
+
+function slaColor(sla) {
+  if (sla === null) return '#7a7a7a';
+  if (sla >= 99)   return 'var(--green)';
+  if (sla >= 95)   return '#FEE75C';
+  return '#ED4245';
+}
+
+function renderTargets() {
+  const container = document.getElementById('targets-container');
+  if (!allTargets.length) {
+    container.innerHTML = '<p class="txt-muted txt-center">Aucune cible ping configurée. '
+      + 'Cliquez sur <strong>+ Ajouter une cible</strong> ci-dessus.</p>';
+    return;
+  }
+  // Render cards + fetch history for each
+  container.innerHTML = allTargets.map(t => `
+    <div class="card mb-4" id="ping-card-${t.id}">
+      <div class="card__header">
+        <span><i class="fa-solid fa-satellite-dish"></i> ${t.label}
+          <span class="txt-muted" style="font-size:.85rem"> — ${t.host}</span>
+        </span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span id="ping-sla-${t.id}" class="txt-muted" style="font-size:.85rem">Chargement SLA…</span>
+          <button class="btn-icon btn-icon--danger" onclick="deleteTarget(${t.id},'${t.label}')" title="Supprimer">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      </div>
+      <div class="card__body">
+        <div class="kpi-grid" id="ping-kpis-${t.id}" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
+          <div class="kpi-card"><div class="kpi-card__body">
+            <div class="kpi-card__label">SLA</div>
+            <div class="kpi-card__value" id="kpi-sla-${t.id}">—</div>
+          </div></div>
+          <div class="kpi-card"><div class="kpi-card__body">
+            <div class="kpi-card__label">RTT moyen</div>
+            <div class="kpi-card__value" id="kpi-avg-${t.id}">—</div>
+          </div></div>
+          <div class="kpi-card"><div class="kpi-card__body">
+            <div class="kpi-card__label">RTT min</div>
+            <div class="kpi-card__value" id="kpi-min-${t.id}">—</div>
+          </div></div>
+          <div class="kpi-card"><div class="kpi-card__body">
+            <div class="kpi-card__label">RTT max</div>
+            <div class="kpi-card__value" id="kpi-max-${t.id}">—</div>
+          </div></div>
+        </div>
+        <div style="height:180px"><canvas id="chart-${t.id}"></canvas></div>
+      </div>
+    </div>`).join('');
+
+  allTargets.forEach(t => loadTarget(t));
+}
+
+const _charts = {};
+
+function loadTarget(t) {
+  // SLA stats
+  fetch(`/api/ping/${t.id}/sla?hours=${hoursFilter}`)
+    .then(r => r.json())
+    .then(s => {
+      const sla = s.sla;
+      const slaEl = document.getElementById(`kpi-sla-${t.id}`);
+      if (slaEl) slaEl.textContent = sla !== null ? sla + '%' : '—';
+      if (slaEl) slaEl.style.color = slaColor(sla);
+      const hdrEl = document.getElementById(`ping-sla-${t.id}`);
+      if (hdrEl) hdrEl.textContent = sla !== null ? `SLA ${sla}%` : 'Pas de données';
+      if (hdrEl) hdrEl.style.color = slaColor(sla);
+      const avgEl = document.getElementById(`kpi-avg-${t.id}`);
+      if (avgEl) avgEl.textContent = fmtRtt(s.avg_rtt);
+      const minEl = document.getElementById(`kpi-min-${t.id}`);
+      if (minEl) minEl.textContent = fmtRtt(s.min_rtt);
+      const maxEl = document.getElementById(`kpi-max-${t.id}`);
+      if (maxEl) maxEl.textContent = fmtRtt(s.max_rtt);
+    });
+
+  // History chart
+  fetch(`/api/ping/${t.id}/history?hours=${hoursFilter}`)
+    .then(r => r.json())
+    .then(d => {
+      const ctx = document.getElementById(`chart-${t.id}`);
+      if (!ctx) return;
+      if (_charts[t.id]) { _charts[t.id].destroy(); }
+      _charts[t.id] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: d.labels,
+          datasets: [{
+            label: 'RTT (ms)',
+            data: d.rtt,
+            borderColor: '#5865F2',
+            backgroundColor: 'rgba(88,101,242,0.1)',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            pointHoverRadius: 3,
+            fill: true,
+            tension: 0.3,
+          }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, animation: false,
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            x: { grid: { color: '#1e1e1e' }, ticks: { maxTicksLimit: 8, maxRotation: 0 } },
+            y: { grid: { color: '#1e1e1e' }, beginAtZero: true,
+                 ticks: { callback: v => v + ' ms', maxTicksLimit: 5 } },
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#1f1f1f', borderColor: '#2d2d2d', borderWidth: 1,
+              callbacks: {
+                label: ctx => {
+                  const suc = d.success[ctx.dataIndex];
+                  return suc ? `RTT: ${ctx.parsed.y?.toFixed(1)} ms` : '✗ Timeout';
+                }
+              }
+            },
+          },
+        },
+      });
+    });
+}
+
+// Filtres période
+document.querySelectorAll('#period-group .btn-period').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#period-group .btn-period').forEach(b => b.classList.remove('btn-period--active'));
+    btn.classList.add('btn-period--active');
+    hoursFilter = parseInt(btn.dataset.h);
+    allTargets.forEach(t => loadTarget(t));
+  });
+});
+
+function loadTargets() {
+  fetch('/api/ping-targets')
+    .then(r => r.json())
+    .then(d => {
+      allTargets = d.filter(t => t.enabled);
+      renderTargets();
+    })
+    .catch(console.error);
+}
+
+// ── Gestion des cibles ────────────────────────────────────────────────────────
+document.getElementById('btn-add-target')?.addEventListener('click', () => {
+  const form = document.getElementById('add-target-form');
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+});
+
+document.getElementById('btn-save-target')?.addEventListener('click', () => {
+  const errEl = document.getElementById('add-target-err');
+  const label = document.getElementById('new-ping-label').value.trim();
+  const host  = document.getElementById('new-ping-host').value.trim();
+  if (!label || !host) { errEl.textContent = 'Label et hôte requis'; return; }
+  errEl.textContent = '';
+  fetch('/api/ping-targets', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ label, host })
+  })
+  .then(r => r.ok ? r.json() : r.json().then(d => Promise.reject(d.error)))
+  .then(() => {
+    document.getElementById('new-ping-label').value = '';
+    document.getElementById('new-ping-host').value  = '';
+    document.getElementById('add-target-form').style.display = 'none';
+    loadTargets();
+  })
+  .catch(e => { errEl.textContent = e || 'Erreur'; });
+});
+
+function deleteTarget(id, label) {
+  if (!confirm(`Supprimer la cible ping "${label}" ?`)) return;
+  fetch('/api/ping-targets/' + id, { method: 'DELETE' })
+    .then(() => loadTargets());
+}
+
+loadTargets();
+setInterval(() => allTargets.forEach(t => loadTarget(t)), 60000);
+</script>
+{% endblock %}

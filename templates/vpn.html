@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block title %}VPN / Tunnels{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title"><i class="fa-solid fa-shield-halved"></i> VPN / Tunnels</h1>
+  <span class="page-subtitle">
+    {{ router.name if router else '—' }}{% if router %} — {{ router.ip }}{% endif %}
+  </span>
+</div>
+
+<!-- KPI summary -->
+<div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">
+  <div class="kpi-card">
+    <div class="kpi-card__icon" style="background:rgba(0,136,204,.15);color:var(--blue)"><i class="fa-solid fa-shield-halved"></i></div>
+    <div class="kpi-card__body">
+      <div class="kpi-card__label">Tunnels UP</div>
+      <div class="kpi-card__value txt-green" id="vpn-up">—</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__icon" style="background:rgba(204,0,0,.15);color:var(--red)"><i class="fa-solid fa-shield-halved"></i></div>
+    <div class="kpi-card__body">
+      <div class="kpi-card__label">Tunnels DOWN</div>
+      <div class="kpi-card__value txt-red" id="vpn-down">—</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__icon" style="background:rgba(0,204,85,.15);color:var(--green)"><i class="fa-solid fa-arrow-up"></i></div>
+    <div class="kpi-card__body">
+      <div class="kpi-card__label">Débit IN total</div>
+      <div class="kpi-card__value" id="vpn-total-in" style="font-size:1.1rem">—</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__icon" style="background:rgba(204,0,0,.12);color:#ff4444"><i class="fa-solid fa-arrow-down"></i></div>
+    <div class="kpi-card__body">
+      <div class="kpi-card__label">Débit OUT total</div>
+      <div class="kpi-card__value" id="vpn-total-out" style="font-size:1.1rem">—</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__icon" style="background:rgba(255,170,0,.15);color:var(--yellow)"><i class="fa-solid fa-key"></i></div>
+    <div class="kpi-card__body">
+      <div class="kpi-card__label">IKE SA</div>
+      <div class="kpi-card__value" id="vpn-ike-count">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tunnel interfaces -->
+<div class="card mt-4">
+  <div class="card__header">
+    <span><i class="fa-solid fa-diagram-project"></i> Interfaces tunnel</span>
+    <button class="btn-icon" id="btn-refresh" title="Rafraîchir">
+      <i class="fa-solid fa-rotate"></i>
+    </button>
+  </div>
+  <div class="card__body card__body--no-pad">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Interface</th><th>Statut</th><th>Vitesse</th>
+          <th>IN bps</th><th>OUT bps</th><th>IN pps</th><th>OUT pps</th><th>Erreurs</th>
+        </tr>
+      </thead>
+      <tbody id="vpn-tunnels-tbody">
+        <tr><td colspan="8" class="txt-muted txt-center">Chargement…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- IKE SA table -->
+<div class="card mt-4">
+  <div class="card__header">
+    <span><i class="fa-solid fa-key"></i> Associations de sécurité IKE</span>
+    <span class="txt-muted" style="font-size:.8rem">Via Huawei Enterprise MIB</span>
+  </div>
+  <div class="card__body card__body--no-pad">
+    <table class="table">
+      <thead>
+        <tr><th>Nom / SA</th><th>Adresse distante</th><th>Statut</th></tr>
+      </thead>
+      <tbody id="vpn-ike-tbody">
+        <tr><td colspan="3" class="txt-muted txt-center">Chargement…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Graphique historique tunnel sélectionné -->
+<div class="card mt-4" id="vpn-chart-card" style="display:none">
+  <div class="card__header">
+    <span><i class="fa-solid fa-chart-line"></i> Débit — <span id="vpn-chart-title">—</span></span>
+    <div class="btn-group" id="vpn-period-group">
+      <button class="btn-period btn-period--active" data-h="1">1h</button>
+      <button class="btn-period" data-h="6">6h</button>
+      <button class="btn-period" data-h="24">24h</button>
+    </div>
+  </div>
+  <div class="card__body">
+    <div style="position:relative;height:180px"><canvas id="chart-vpn-if"></canvas></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtBps(v) {
+  if (v == null) return '—';
+  if (v >= 1e9) return (v/1e9).toFixed(2) + ' Gbps';
+  if (v >= 1e6) return (v/1e6).toFixed(2) + ' Mbps';
+  if (v >= 1e3) return (v/1e3).toFixed(1) + ' Kbps';
+  return Math.round(v) + ' bps';
+}
+function fmtBpsTip(ctx) {
+  const v = ctx.parsed.y;
+  if (v >= 1e9) return ctx.dataset.label + ': ' + (v/1e9).toFixed(2) + ' Gbps';
+  if (v >= 1e6) return ctx.dataset.label + ': ' + (v/1e6).toFixed(2) + ' Mbps';
+  if (v >= 1e3) return ctx.dataset.label + ': ' + (v/1e3).toFixed(1) + ' Kbps';
+  return ctx.dataset.label + ': ' + Math.round(v) + ' bps';
+}
+
+let vpnChart    = null;
+let chartIfIdx  = null;
+let chartHours  = 1;
+
+function loadVpn() {
+  fetch(apiUrl('/api/vpn'))
+    .then(r => r.json())
+    .then(d => {
+      const tunnels = d.tunnels || [], sas = d.ike_sas || [];
+
+      const up   = tunnels.filter(t => t.if_status === 1).length;
+      const down = tunnels.filter(t => t.if_status !== 1).length;
+      document.getElementById('vpn-up').textContent   = up;
+      document.getElementById('vpn-down').textContent = down;
+      document.getElementById('vpn-ike-count').textContent = sas.length;
+
+      // Total bps
+      let totalIn = 0, totalOut = 0;
+      tunnels.forEach(t => { totalIn += t.in_bps || 0; totalOut += t.out_bps || 0; });
+      document.getElementById('vpn-total-in').textContent  = fmtBps(totalIn);
+      document.getElementById('vpn-total-out').textContent = fmtBps(totalOut);
+
+      // Tunnel table
+      const tbody = document.getElementById('vpn-tunnels-tbody');
+      if (!tunnels.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="txt-muted txt-center">Aucune interface tunnel détectée (cherche Tunnel*, GRE*, VPN*, L2TP* dans les noms d\'interfaces)</td></tr>';
+      } else {
+        tbody.innerHTML = tunnels.map(t => `
+          <tr style="cursor:pointer" onclick="showTunnelChart(${t.if_index},'${esc(t.display_name || t.if_name)}')"
+              title="Voir le graphique">
+            <td class="txt-mono" style="font-weight:600">${esc(t.display_name || t.if_name)}</td>
+            <td>${t.if_status === 1
+              ? '<span class="badge badge--up"><span class="dot dot--up"></span> UP</span>'
+              : '<span class="badge badge--down"><span class="dot dot--down"></span> DOWN</span>'}</td>
+            <td>${t.speed_mbps ? t.speed_mbps + ' Mbps' : '—'}</td>
+            <td class="txt-green">${t.in_bps_fmt  || '—'}</td>
+            <td class="txt-red">${t.out_bps_fmt   || '—'}</td>
+            <td class="txt-muted" style="font-size:.85rem">${t.in_pps_fmt  || '—'}</td>
+            <td class="txt-muted" style="font-size:.85rem">${t.out_pps_fmt || '—'}</td>
+            <td class="txt-warn" style="font-size:.85rem">${((t.in_errors||0)+(t.out_errors||0)) || '0'}</td>
+          </tr>`).join('');
+      }
+
+      // IKE SA table
+      const ikeTbody = document.getElementById('vpn-ike-tbody');
+      if (!sas.length) {
+        ikeTbody.innerHTML = '<tr><td colspan="3" class="txt-muted txt-center">Aucune SA IKE — le routeur ne supporte peut-être pas le Huawei IKE MIB</td></tr>';
+      } else {
+        ikeTbody.innerHTML = sas.map(s => `
+          <tr>
+            <td class="txt-mono">${esc(s.name || 'SA')}</td>
+            <td class="txt-muted">${esc(s.remote || '—')}</td>
+            <td>${s.status === 1
+              ? '<span class="badge badge--up">Établi</span>'
+              : '<span class="badge badge--neutral">—</span>'}</td>
+          </tr>`).join('');
+      }
+    });
+}
+
+function showTunnelChart(ifIdx, name) {
+  chartIfIdx = ifIdx;
+  document.getElementById('vpn-chart-card').style.display = '';
+  document.getElementById('vpn-chart-title').textContent = name;
+  if (!vpnChart) {
+    vpnChart = buildLineChart('chart-vpn-if', ['IN','OUT'],
+      ['#00cc44','#cc0000'], ['rgba(0,204,68,0.12)','rgba(204,0,0,0.12)'],
+      { yFmt: fmtBpsAxis, tooltipFmt: fmtBpsTip });
+  }
+  loadTunnelChart();
+}
+
+function loadTunnelChart() {
+  if (!chartIfIdx) return;
+  fetch(apiUrl('/api/interfaces/' + chartIfIdx + '/bps', { hours: chartHours }))
+    .then(r => r.json())
+    .then(d => updateChart(vpnChart, d.labels, [d.in_bps, d.out_bps]));
+}
+
+document.querySelectorAll('#vpn-period-group .btn-period').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#vpn-period-group .btn-period').forEach(b => b.classList.remove('btn-period--active'));
+    btn.classList.add('btn-period--active');
+    chartHours = parseInt(btn.dataset.h);
+    loadTunnelChart();
+  });
+});
+
+document.getElementById('btn-refresh').addEventListener('click', () => {
+  const icon = document.querySelector('#btn-refresh i');
+  icon.classList.add('fa-spin');
+  loadVpn();
+  setTimeout(() => icon.classList.remove('fa-spin'), 800);
+});
+
+loadVpn();
+setInterval(loadVpn, 30000);
+document.addEventListener('routerChanged', loadVpn);
+</script>
+{% endblock %}

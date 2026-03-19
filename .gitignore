@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.venv/
+venv/
+
+# Environnement — NE JAMAIS commiter
+.env
+instance/
+
+# Sauvegardes DB
+backup.sql
+*.sql.gz
+
+# Certificats SSL
+nginx/certs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

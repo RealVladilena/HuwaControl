@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% block title %}Événements{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title"><i class="fa-solid fa-bell"></i> Événements</h1>
+  <span class="page-subtitle">Journal des alertes et notifications</span>
+</div>
+
+<!-- Filtres -->
+<div class="toolbar" style="gap:12px;flex-wrap:wrap">
+  <div class="btn-group" id="lvl-group">
+    <button class="btn-period btn-period--active" data-lvl="">Tous</button>
+    <button class="btn-period" data-lvl="info">Info</button>
+    <button class="btn-period" data-lvl="warning">Alerte</button>
+    <button class="btn-period" data-lvl="error">Erreur</button>
+  </div>
+  <div class="btn-group" id="cat-group">
+    <button class="btn-period btn-period--active" data-cat="">Catégories</button>
+    <button class="btn-period" data-cat="interface">Interface</button>
+    <button class="btn-period" data-cat="temperature">Température</button>
+    <button class="btn-period" data-cat="bandwidth">Bande passante</button>
+    <button class="btn-period" data-cat="ping">Ping</button>
+    <button class="btn-period" data-cat="snmp_trap">SNMP Trap</button>
+  </div>
+  <label class="form-check" style="font-size:.85rem">
+    <input type="checkbox" id="chk-unacked"> <span>Non acquittés seulement</span>
+  </label>
+  <div style="margin-left:auto;display:flex;gap:8px">
+    <a href="/api/export/events" class="btn btn--ghost" style="font-size:12px;padding:4px 10px">
+      <i class="fa-solid fa-file-csv"></i> CSV
+    </a>
+    <button class="btn btn--primary" style="font-size:12px;padding:4px 10px" id="btn-ack-all">
+      <i class="fa-solid fa-check-double"></i> Tout acquitter
+    </button>
+    <button class="btn btn--danger" style="font-size:12px;padding:4px 10px" id="btn-clear">
+      <i class="fa-solid fa-trash"></i> Vider
+    </button>
+  </div>
+</div>
+
+<!-- Tableau événements -->
+<div class="card mt-4">
+  <div class="card__body card__body--no-pad">
+    <table class="table" id="events-table">
+      <thead>
+        <tr>
+          <th style="width:140px">Date/Heure</th>
+          <th style="width:80px">Niveau</th>
+          <th style="width:110px">Catégorie</th>
+          <th style="width:140px">Routeur</th>
+          <th>Titre</th>
+          <th>Message</th>
+          <th style="width:80px">Acquitté</th>
+        </tr>
+      </thead>
+      <tbody id="events-tbody">
+        <tr><td colspan="7" class="txt-muted txt-center">Chargement…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let filterLvl    = '';
+let filterCat    = '';
+let filterUnacked = false;
+let allEvents    = [];
+
+const LEVEL_BADGE = {
+  info:    '<span class="badge badge--neutral">Info</span>',
+  success: '<span class="badge badge--up">OK</span>',
+  warning: '<span class="badge" style="background:rgba(254,231,92,.15);color:#FEE75C">⚠ Alerte</span>',
+  error:   '<span class="badge badge--down">Erreur</span>',
+};
+const CAT_ICON = {
+  interface:   '<i class="fa-solid fa-diagram-project"></i>',
+  temperature: '<i class="fa-solid fa-thermometer-half"></i>',
+  bandwidth:   '<i class="fa-solid fa-chart-area"></i>',
+  system:      '<i class="fa-solid fa-server"></i>',
+  ping:        '<i class="fa-solid fa-satellite-dish"></i>',
+};
+
+function fmtTs(ts) {
+  const d = new Date(ts * 1000);
+  return d.toLocaleDateString('fr-FR') + ' ' +
+         d.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+function ackEvent(id, btn) {
+  btn.disabled = true;
+  fetch('/api/events/' + id + '/ack', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        const ev = allEvents.find(e => e.id === id);
+        if (ev) ev.acked = true;
+        renderEvents();
+      }
+    })
+    .catch(console.error);
+}
+
+function renderEvents() {
+  const tbody = document.getElementById('events-tbody');
+  let rows = allEvents;
+  if (filterLvl)    rows = rows.filter(e => e.level === filterLvl);
+  if (filterCat)    rows = rows.filter(e => e.category === filterCat);
+  if (filterUnacked) rows = rows.filter(e => !e.acked);
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="txt-muted txt-center">Aucun événement</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(e => `
+    <tr style="${e.acked ? 'opacity:.5' : ''}">
+      <td class="txt-muted" style="font-size:.82rem;white-space:nowrap">${fmtTs(e.ts)}</td>
+      <td>${LEVEL_BADGE[e.level] || e.level}</td>
+      <td style="font-size:.85rem">${(CAT_ICON[e.category]||'') + ' ' + (e.category||'')}</td>
+      <td class="txt-mono" style="font-size:.85rem">${e.router_name||'—'}</td>
+      <td style="font-size:.9rem">${e.title||''}</td>
+      <td class="txt-muted" style="font-size:.82rem">${e.message||''}</td>
+      <td>${e.acked
+        ? `<span class="badge badge--neutral" title="Vu par ${e.acked_by||'?'}">✓ Vu</span>`
+        : `<button class="btn" style="font-size:11px;padding:2px 8px" onclick="ackEvent(${e.id},this)">Acquitter</button>`
+      }</td>
+    </tr>`).join('');
+}
+
+function loadEvents() {
+  const params = new URLSearchParams();
+  const rid = getActiveRouter();
+  if (rid) params.set('router_id', rid);
+  params.set('limit', '500');
+  fetch('/api/events?' + params)
+    .then(r => r.json())
+    .then(d => { allEvents = d; renderEvents(); })
+    .catch(console.error);
+}
+
+// Filtres niveau
+document.querySelectorAll('#lvl-group .btn-period').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#lvl-group .btn-period').forEach(b => b.classList.remove('btn-period--active'));
+    btn.classList.add('btn-period--active');
+    filterLvl = btn.dataset.lvl;
+    renderEvents();
+  });
+});
+
+// Filtres catégorie
+document.querySelectorAll('#cat-group .btn-period').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#cat-group .btn-period').forEach(b => b.classList.remove('btn-period--active'));
+    btn.classList.add('btn-period--active');
+    filterCat = btn.dataset.cat;
+    renderEvents();
+  });
+});
+
+document.getElementById('chk-unacked').addEventListener('change', e => {
+  filterUnacked = e.target.checked;
+  renderEvents();
+});
+
+document.getElementById('btn-ack-all').addEventListener('click', () => {
+  if (!confirm('Acquitter tous les événements non-acquittés ?')) return;
+  fetch('/api/events/ack-all', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ router_id: getActiveRouter() })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      showToast(`${d.count} événement${d.count > 1 ? 's' : ''} acquitté${d.count > 1 ? 's' : ''}`, 'success');
+      loadEvents();
+    }
+  })
+  .catch(() => showToast('Erreur réseau', 'error'));
+});
+
+document.getElementById('btn-clear').addEventListener('click', () => {
+  if (!confirm('Vider tous les événements affichés ?')) return;
+  allEvents = [];
+  renderEvents();
+});
+
+loadEvents();
+setInterval(loadEvents, 60000);
+document.addEventListener('routerChanged', loadEvents);
+</script>
+{% endblock %}

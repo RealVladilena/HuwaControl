@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Performance{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title"><i class="fa-solid fa-chart-area"></i> Performance système</h1>
+  <span class="page-subtitle">CPU, mémoire et température</span>
+</div>
+
+<div class="toolbar">
+  <span class="toolbar__label">Période :</span>
+  <div class="btn-group" id="period-group">
+    <button class="btn-period btn-period--active" data-hours="1">1h</button>
+    <button class="btn-period" data-hours="6">6h</button>
+    <button class="btn-period" data-hours="24">24h</button>
+    <button class="btn-period" data-days="7">7j</button>
+    <button class="btn-period" data-days="30">30j</button>
+  </div>
+  <a href="/api/export/performance" class="btn btn--ghost" style="font-size:12px;padding:4px 10px;margin-left:auto">
+    <i class="fa-solid fa-file-csv"></i> CSV
+  </a>
+</div>
+
+<!-- CPU -->
+<div class="card mt-4">
+  <div class="card__header">
+    <span><i class="fa-solid fa-microchip"></i> CPU Usage (%)</span>
+    <div class="card__header-stats">
+      <span class="stat-pill stat-pill--red">Actuel : <b id="cpu-now">—</b></span>
+      <span class="stat-pill">Max : <b id="cpu-max">—</b></span>
+      <span class="stat-pill">Moy : <b id="cpu-avg">—</b></span>
+    </div>
+  </div>
+  <div class="card__body">
+    <div style="position:relative;height:160px"><canvas id="chart-cpu"></canvas></div>
+  </div>
+</div>
+
+<!-- Mémoire -->
+<div class="card mt-4">
+  <div class="card__header">
+    <span><i class="fa-solid fa-memory"></i> Mémoire Usage (%)</span>
+    <div class="card__header-stats">
+      <span class="stat-pill stat-pill--orange">Actuel : <b id="mem-now">—</b></span>
+      <span class="stat-pill">Max : <b id="mem-max">—</b></span>
+      <span class="stat-pill">Moy : <b id="mem-avg">—</b></span>
+    </div>
+  </div>
+  <div class="card__body">
+    <div style="position:relative;height:160px"><canvas id="chart-mem"></canvas></div>
+  </div>
+</div>
+
+<!-- Température -->
+<div class="card mt-4">
+  <div class="card__header">
+    <span><i class="fa-solid fa-thermometer-half"></i> Température (°C)</span>
+    <div class="card__header-stats">
+      <span class="stat-pill stat-pill--blue">Actuel : <b id="temp-now">—</b></span>
+      <span class="stat-pill">Max : <b id="temp-max">—</b></span>
+    </div>
+  </div>
+  <div class="card__body">
+    <div style="position:relative;height:160px"><canvas id="chart-temp"></canvas></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const chartCpu  = buildLineChart('chart-cpu',  ['CPU %'],   ['#cc0000'],  ['rgba(204,0,0,0.15)']);
+const chartMem  = buildLineChart('chart-mem',  ['Mém %'],   ['#e07000'],  ['rgba(224,112,0,0.15)']);
+const chartTemp = buildLineChart('chart-temp', ['Temp °C'], ['#0088cc'],  ['rgba(0,136,204,0.15)']);
+
+function stats(arr) {
+  const clean = arr.filter(v => v != null);
+  if (!clean.length) return { avg: null, max: null };
+  return {
+    avg: clean.reduce((a, b) => a + b, 0) / clean.length,
+    max: Math.max(...clean),
+  };
+}
+
+function fmt(v, unit) {
+  return v != null ? v.toFixed(1) + unit : '—';
+}
+
+let currentHours = 1;
+let currentDays  = null;   // null = mode court terme (hours), sinon mode long terme (days)
+
+function loadPerf(hours, days) {
+  const url = days
+    ? apiUrl('/api/history', { days })
+    : apiUrl('/api/performance', { hours });
+  fetch(url)
+    .then(r => r.json())
+    .then(d => {
+      // /api/history retourne cpu_avg/mem_avg/temp_avg ; /api/performance retourne cpu/mem/temp
+      const cpu  = d.cpu  || d.cpu_avg  || [];
+      const mem  = d.mem  || d.mem_avg  || [];
+      const temp = d.temp || d.temp_avg || [];
+
+      updateChart(chartCpu,  d.labels, [cpu]);
+      updateChart(chartMem,  d.labels, [mem]);
+      updateChart(chartTemp, d.labels, [temp]);
+
+      const cs = stats(cpu), ms = stats(mem), ts2 = stats(temp);
+      document.getElementById('cpu-now').textContent  = days ? fmt(cs.avg,  '%')  : fmt(cpu.at(-1),  '%');
+      document.getElementById('cpu-max').textContent  = fmt(cs.max,   '%');
+      document.getElementById('cpu-avg').textContent  = fmt(cs.avg,   '%');
+      document.getElementById('mem-now').textContent  = days ? fmt(ms.avg,  '%')  : fmt(mem.at(-1),  '%');
+      document.getElementById('mem-max').textContent  = fmt(ms.max,   '%');
+      document.getElementById('mem-avg').textContent  = fmt(ms.avg,   '%');
+      document.getElementById('temp-now').textContent = days ? fmt(ts2.avg, '°C') : fmt(temp.at(-1), '°C');
+      document.getElementById('temp-max').textContent = fmt(ts2.max,  '°C');
+    })
+    .catch(console.error);
+}
+
+document.querySelectorAll('.btn-period').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.btn-period').forEach(b => b.classList.remove('btn-period--active'));
+    btn.classList.add('btn-period--active');
+    if (btn.dataset.days) {
+      currentDays  = parseInt(btn.dataset.days);
+      currentHours = null;
+    } else {
+      currentHours = parseInt(btn.dataset.hours);
+      currentDays  = null;
+    }
+    loadPerf(currentHours, currentDays);
+  });
+});
+
+loadPerf(currentHours, currentDays);
+setInterval(() => loadPerf(currentHours, currentDays), 60000);
+</script>
+{% endblock %}

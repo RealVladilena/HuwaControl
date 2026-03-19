@@ -1,0 +1,462 @@
+{% extends "base.html" %}
+{% block title %}Paramètres{% endblock %}
+
+{% block content %}
+{% set _cfg = cfg|default({}) %}
+{% set _ping_targets = ping_targets|default([]) %}
+
+<div class="page-header">
+  <h1 class="page-title"><i class="fa-solid fa-gear"></i> Paramètres</h1>
+</div>
+
+<!-- Seuils d'alerte -->
+{% if current_user.is_admin %}
+<div class="card">
+  <div class="card__header"><span><i class="fa-solid fa-sliders"></i> Seuils d'alerte</span></div>
+  <div class="card__body">
+    <div class="form-group">
+      <label class="form-label">Température avertissement (°C)</label>
+      <input class="form-input" type="number" id="cfg-temp-warn" min="30" max="120"
+             value="{{ _cfg.get('alert_temp_warn') or 60 }}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Température critique (°C)</label>
+      <input class="form-input" type="number" id="cfg-temp-crit" min="30" max="120"
+             value="{{ _cfg.get('alert_temp_crit') or 80 }}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Seuil bande passante global (%)</label>
+      <input class="form-input" type="number" id="cfg-bw-warn" min="10" max="100"
+             value="{{ _cfg.get('alert_bw_warn_pct') or 80 }}">
+      <small class="txt-muted">Seuil global — peut être surchargé par interface dans la page Interfaces</small>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Heure du rapport quotidien</label>
+      <input class="form-input" type="number" id="cfg-report-hour" min="0" max="23"
+             value="{{ _cfg.get('report_hour') or 7 }}">
+      <small class="txt-muted">Heure UTC (ex : 7 = 7h00 UTC)</small>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Interface WAN</label>
+      <select class="form-input" id="cfg-wan-if">
+        <option value="{{ _cfg.get('wan_if_index') or 8 }}">
+          Chargement… (actuel : #{{ _cfg.get('wan_if_index') or 8 }})
+        </option>
+      </select>
+      <small class="txt-muted">Interface affichée comme WAN sur le dashboard</small>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mots-clés syslog critiques</label>
+      <input class="form-input" type="text" id="cfg-syslog-kw"
+             value="{{ _cfg.get('syslog_alert_keywords') or 'error,critical,down,fail,denied' }}"
+             placeholder="ex : error,critical,down,fail">
+      <small class="txt-muted">Liste séparée par virgules — génère une alerte si trouvé dans un message syslog</small>
+    </div>
+    <div id="cfg-msg" style="font-size:.85rem;margin-top:4px"></div>
+    <button class="btn btn--primary mt-4" id="btn-save-cfg">
+      <i class="fa-solid fa-floppy-disk"></i> Enregistrer
+    </button>
+  </div>
+</div>
+
+<!-- Backup / Restore -->
+<div class="card mt-4">
+  <div class="card__header"><span><i class="fa-solid fa-box-archive"></i> Backup / Restauration</span></div>
+  <div class="card__body">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+      <a href="/api/backup" class="btn btn--primary">
+        <i class="fa-solid fa-download"></i> Télécharger backup.json
+      </a>
+      <div style="display:flex;gap:8px;align-items:center">
+        <label class="btn btn--ghost" style="cursor:pointer">
+          <i class="fa-solid fa-upload"></i> Restaurer depuis fichier
+          <input type="file" id="restore-file" accept=".json" style="display:none">
+        </label>
+        <button class="btn btn--primary" id="btn-restore">Importer</button>
+      </div>
+    </div>
+    <div id="restore-msg" style="font-size:.85rem;margin-top:8px"></div>
+    <small class="txt-muted">Le backup contient : paramètres, cibles ping, alias interfaces. Les mots de passe SNMP v3 sont masqués.</small>
+  </div>
+</div>
+
+<!-- Cibles Ping -->
+<div class="card mt-4">
+  <div class="card__header">
+    <span><i class="fa-solid fa-satellite-dish"></i> Cibles Ping</span>
+    <button class="btn btn--primary" style="font-size:12px;padding:4px 10px" id="btn-add-ping">
+      <i class="fa-solid fa-plus"></i> Ajouter
+    </button>
+  </div>
+  <div class="card__body card__body--no-pad">
+    <table class="table">
+      <thead><tr><th>Label</th><th>Hôte</th><th>Actif</th><th></th></tr></thead>
+      <tbody>
+        {% for t in _ping_targets %}
+        <tr>
+          <td>{{ t.label }}</td>
+          <td class="txt-mono" style="font-size:.85rem">{{ t.host }}</td>
+          <td>{% if t.enabled %}<span class="badge badge--up">Oui</span>{% else %}<span class="badge badge--down">Non</span>{% endif %}</td>
+          <td>
+            <button class="btn-icon btn-icon--danger" onclick="deletePingTarget({{ t.id }},'{{ t.label }}')" title="Supprimer">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="txt-muted txt-center">Aucune cible ping configurée</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Utilisateurs -->
+<div class="row-2col mt-4">
+
+  <div class="card">
+    <div class="card__header"><span><i class="fa-solid fa-key"></i> Changer mon mot de passe</span></div>
+    <div class="card__body">
+      <div class="form-group">
+        <label class="form-label">Mot de passe actuel</label>
+        <input class="form-input" type="password" id="pw-old">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nouveau mot de passe</label>
+        <input class="form-input" type="password" id="pw-new">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirmation</label>
+        <input class="form-input" type="password" id="pw-confirm">
+      </div>
+      <div id="pw-msg" style="font-size:0.85rem;margin-top:4px;"></div>
+      <button class="btn btn--primary mt-4" id="btn-pw">
+        <i class="fa-solid fa-floppy-disk"></i> Mettre à jour
+      </button>
+    </div>
+  </div>
+
+  {% if current_user.is_admin %}
+  <div class="card">
+    <div class="card__header">
+      <span><i class="fa-solid fa-users"></i> Comptes</span>
+      <button class="btn btn--primary" style="font-size:12px;padding:4px 10px" id="btn-add-user">
+        <i class="fa-solid fa-plus"></i> Ajouter
+      </button>
+    </div>
+    <div class="card__body card__body--no-pad">
+      <table class="table">
+        <thead><tr><th>Utilisateur</th><th>Rôle</th><th></th></tr></thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td>{{ u.username }}</td>
+            <td>
+              {% if u.is_admin %}<span class="badge badge--up">Admin</span>
+              {% else %}<span class="badge badge--neutral">Lecture</span>{% endif %}
+            </td>
+            <td style="display:flex;gap:6px;align-items:center">
+              {% if not u.is_admin %}
+              <button class="btn-icon" title="Gérer les accès routeurs"
+                      onclick="openPermsModal({{ u.id }},'{{ u.username }}')">
+                <i class="fa-solid fa-key"></i>
+              </button>
+              {% endif %}
+              {% if u.id != current_user.id|int %}
+              <button class="btn-icon btn-icon--danger"
+                      onclick="deleteUser({{ u.id }},'{{ u.username }}')">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Modal cible ping -->
+<div class="modal-overlay" id="ping-modal">
+  <div class="modal-card" style="max-width:400px">
+    <div class="modal-header">
+      <span>Nouvelle cible ping</span>
+      <button class="btn-icon" onclick="closePingModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Label</label>
+        <input class="form-input" type="text" id="ping-label" placeholder="ex : Passerelle">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Hôte / IP</label>
+        <input class="form-input" type="text" id="ping-host" placeholder="ex : 192.168.1.1">
+      </div>
+      <div id="ping-modal-err" class="alert alert--error" style="display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closePingModal()">Annuler</button>
+      <button class="btn btn--primary" id="btn-save-ping">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal utilisateur -->
+<div class="modal-overlay" id="user-modal">
+  <div class="modal-card" style="max-width:400px">
+    <div class="modal-header">
+      <span>Nouvel utilisateur</span>
+      <button class="btn-icon" onclick="closeUserModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nom d'utilisateur</label>
+        <input class="form-input" type="text" id="new-username">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mot de passe</label>
+        <input class="form-input" type="password" id="new-password">
+      </div>
+      <div class="form-group">
+        <label class="form-check">
+          <input type="checkbox" id="new-is-admin">
+          <span>Administrateur</span>
+        </label>
+      </div>
+      <div id="user-modal-err" class="alert alert--error" style="display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeUserModal()">Annuler</button>
+      <button class="btn btn--primary" id="btn-save-user">Créer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal permissions routeurs -->
+<div class="modal-overlay" id="perms-modal">
+  <div class="modal-card" style="max-width:480px">
+    <div class="modal-header">
+      <span><i class="fa-solid fa-key"></i> Accès routeurs — <span id="perms-username"></span></span>
+      <button class="btn-icon" onclick="document.getElementById('perms-modal').classList.remove('active')">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="txt-muted" style="font-size:.83rem;margin-bottom:12px">
+        Si aucun accès n'est coché, l'utilisateur voit tous les routeurs (comportement par défaut).
+        Cocher un routeur restreint l'accès aux routeurs cochés uniquement.
+      </p>
+      <div id="perms-routers-list"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="document.getElementById('perms-modal').classList.remove('active')">Fermer</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Chargement des interfaces pour le sélecteur WAN ──────────────────────────
+(function loadWanIfSelect() {
+  const sel = document.getElementById('cfg-wan-if');
+  const currentVal = sel?.value;
+  fetch(apiUrl('/api/interfaces'))
+    .then(r => r.json())
+    .then(list => {
+      if (!sel) return;
+      const filtered = list.filter(i => {
+        const n = (i.if_name || '').toLowerCase();
+        return n !== 'inloopback0' && n !== 'null0' && !n.startsWith('inloopback');
+      });
+      sel.innerHTML = filtered.map(i => {
+        const name = i.display_name || i.if_name;
+        const speed = i.speed_mbps ? ` — ${i.speed_mbps} Mbps` : '';
+        const status = i.if_status === 1 ? ' ▲' : ' ▼';
+        return `<option value="${i.if_index}" ${String(i.if_index) === String(currentVal) ? 'selected' : ''}>
+          ${name} (#${i.if_index})${speed}${status}
+        </option>`;
+      }).join('');
+      // If none matched, keep placeholder
+      if (!filtered.length) {
+        sel.innerHTML = `<option value="${currentVal}">#${currentVal} (interfaces non chargées)</option>`;
+      }
+    })
+    .catch(() => {
+      if (sel) sel.innerHTML = `<option value="${currentVal}">#${currentVal}</option>`;
+    });
+})();
+
+// ── Seuils d'alerte + rapport ─────────────────────────────────────────────────
+document.getElementById('btn-save-cfg')?.addEventListener('click', () => {
+  const msg = document.getElementById('cfg-msg');
+  fetch('/api/settings', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      alert_temp_warn:        document.getElementById('cfg-temp-warn').value,
+      alert_temp_crit:        document.getElementById('cfg-temp-crit').value,
+      alert_bw_warn_pct:      document.getElementById('cfg-bw-warn').value,
+      report_hour:            document.getElementById('cfg-report-hour').value,
+      wan_if_index:           document.getElementById('cfg-wan-if').value,
+      syslog_alert_keywords:  document.getElementById('cfg-syslog-kw').value,
+    })
+  })
+  .then(r => r.json())
+  .then(d => {
+    msg.textContent = d.ok ? '✓ Paramètres enregistrés.' : '✗ Erreur';
+    msg.style.color = d.ok ? '#00cc55' : '#ff4444';
+    if (typeof showToast !== 'undefined') showToast(d.ok ? 'Paramètres enregistrés' : 'Erreur', d.ok ? 'success' : 'error');
+  });
+});
+
+// ── Cibles Ping ───────────────────────────────────────────────────────────────
+function closePingModal() { document.getElementById('ping-modal').classList.remove('active'); }
+function deletePingTarget(id, label) {
+  if (!confirm(`Supprimer la cible ping "${label}" ?`)) return;
+  fetch('/api/ping-targets/' + id, { method: 'DELETE' }).then(() => location.reload());
+}
+document.getElementById('btn-add-ping')?.addEventListener('click', () => {
+  document.getElementById('ping-label').value = '';
+  document.getElementById('ping-host').value  = '';
+  document.getElementById('ping-modal-err').style.display = 'none';
+  document.getElementById('ping-modal').classList.add('active');
+});
+document.getElementById('btn-save-ping')?.addEventListener('click', () => {
+  const errEl = document.getElementById('ping-modal-err');
+  const payload = {
+    label: document.getElementById('ping-label').value.trim(),
+    host:  document.getElementById('ping-host').value.trim(),
+  };
+  if (!payload.label || !payload.host) {
+    errEl.textContent = 'Label et hôte requis'; errEl.style.display = 'flex'; return;
+  }
+  fetch('/api/ping-targets', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+    .then(r => r.ok ? location.reload() : r.json().then(d => Promise.reject(d.error)))
+    .catch(e => { errEl.textContent = e || 'Erreur'; errEl.style.display = 'flex'; });
+});
+
+// ── Mot de passe ──────────────────────────────────────────────────────────────
+document.getElementById('btn-pw').addEventListener('click', () => {
+  const msg = document.getElementById('pw-msg');
+  fetch('/api/users/password', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      old:     document.getElementById('pw-old').value,
+      new:     document.getElementById('pw-new').value,
+      confirm: document.getElementById('pw-confirm').value,
+    })
+  })
+  .then(r => r.json())
+  .then(d => {
+    msg.textContent = d.ok ? '✓ Mot de passe mis à jour.' : '✗ ' + d.error;
+    msg.style.color = d.ok ? '#00cc55' : '#ff4444';
+    if (d.ok) ['pw-old','pw-new','pw-confirm'].forEach(id => document.getElementById(id).value = '');
+  });
+});
+
+// ── Backup / Restore ──────────────────────────────────────────────────────────
+document.getElementById('btn-restore')?.addEventListener('click', () => {
+  const file = document.getElementById('restore-file').files[0];
+  const msg  = document.getElementById('restore-msg');
+  if (!file) { msg.textContent = 'Sélectionnez un fichier .json'; msg.style.color = '#ff4444'; return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    let data;
+    try { data = JSON.parse(e.target.result); } catch {
+      msg.textContent = 'Fichier JSON invalide'; msg.style.color = '#ff4444'; return;
+    }
+    fetch('/api/restore', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        msg.textContent = `✓ Restauré : ${d.restored.settings} paramètres, ${d.restored.ping_targets} cibles ping`;
+        msg.style.color = '#00cc55';
+        showToast('Backup restauré', 'success');
+      } else {
+        msg.textContent = '✗ ' + (d.error || 'Erreur'); msg.style.color = '#ff4444';
+      }
+    })
+    .catch(() => { msg.textContent = 'Erreur réseau'; msg.style.color = '#ff4444'; });
+  };
+  reader.readAsText(file);
+});
+
+// ── Utilisateurs ──────────────────────────────────────────────────────────────
+function deleteUser(id, name) {
+  if (!confirm(`Supprimer l'utilisateur "${name}" ?`)) return;
+  fetch('/api/users/' + id, { method: 'DELETE' }).then(() => location.reload());
+}
+function closeUserModal() {
+  document.getElementById('user-modal').classList.remove('active');
+}
+document.getElementById('btn-add-user')?.addEventListener('click', () => {
+  document.getElementById('new-username').value = '';
+  document.getElementById('new-password').value = '';
+  document.getElementById('new-is-admin').checked = false;
+  document.getElementById('user-modal-err').style.display = 'none';
+  document.getElementById('user-modal').classList.add('active');
+});
+document.getElementById('btn-save-user')?.addEventListener('click', () => {
+  const errEl = document.getElementById('user-modal-err');
+  fetch('/api/users', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      username: document.getElementById('new-username').value.trim(),
+      password: document.getElementById('new-password').value,
+      is_admin: document.getElementById('new-is-admin').checked,
+    })
+  })
+  .then(r => r.ok ? r.json() : r.json().then(d => Promise.reject(d.error)))
+  .then(() => location.reload())
+  .catch(e => { errEl.textContent = e; errEl.style.display = 'flex'; });
+});
+
+// ── Permissions routeurs ───────────────────────────────────────────────────────
+{% if current_user.is_admin %}
+const _allRouters = {{ all_routers | tojson }};
+let _permsUid = null;
+
+function openPermsModal(uid, username) {
+  _permsUid = uid;
+  document.getElementById('perms-username').textContent = username;
+  const list = document.getElementById('perms-routers-list');
+  list.innerHTML = '<p class="txt-muted">Chargement…</p>';
+  document.getElementById('perms-modal').classList.add('active');
+  fetch('/api/users/' + uid + '/perms')
+    .then(r => r.json())
+    .then(perms => {
+      const granted = new Set(perms.map(p => p.router_id));
+      list.innerHTML = _allRouters.map(r => `
+        <label class="form-check" style="margin-bottom:8px;display:flex;align-items:center;gap:8px">
+          <input type="checkbox" data-rid="${r.id}"
+                 ${granted.has(r.id) ? 'checked' : ''}
+                 onchange="toggleRouterPerm(${uid}, ${r.id}, this.checked)">
+          <span>${r.name} <span class="txt-muted" style="font-size:.8rem">(${r.ip})</span></span>
+        </label>`).join('');
+    });
+}
+
+function toggleRouterPerm(uid, rid, checked) {
+  if (checked) {
+    fetch('/api/users/' + uid + '/perms', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ router_id: rid, can_write: false })
+    }).then(() => showToast('Accès accordé', 'success'));
+  } else {
+    fetch('/api/users/' + uid + '/perms/' + rid, { method: 'DELETE' })
+      .then(() => showToast('Accès révoqué', 'info'));
+  }
+}
+{% endif %}
+</script>
+{% endblock %}

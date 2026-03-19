@@ -1,0 +1,484 @@
+{% extends "base.html" %}
+{% block title %}Logs routeur{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title"><i class="fa-solid fa-terminal"></i> Logs routeur</h1>
+  <span class="page-subtitle">Syslog UDP reçu sur le port {{ syslog_port }}</span>
+</div>
+
+<!-- Config tutorial -->
+<details class="card" style="margin-bottom:1rem" id="syslog-tutorial">
+  <summary style="padding:14px 18px;cursor:pointer;display:flex;align-items:center;gap:10px;
+                  font-weight:600;font-size:.95rem;list-style:none;user-select:none">
+    <i class="fa-solid fa-circle-question" style="color:var(--red)"></i>
+    Comment configurer l'envoi des logs depuis le routeur ?
+    <i class="fa-solid fa-chevron-down" style="margin-left:auto;font-size:.75rem;color:var(--txt-muted)"
+       id="tutorial-chevron"></i>
+  </summary>
+
+  <div style="padding:0 18px 18px;border-top:1px solid var(--border)">
+
+    <!-- Méthode 1 : CLI -->
+    <div style="margin-top:1rem">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:.6rem">
+        <span style="background:var(--red);color:#fff;font-size:.72rem;font-weight:700;
+                     padding:2px 8px;border-radius:12px">MÉTHODE 1</span>
+        <strong>Via SSH / Console (CLI)</strong>
+      </div>
+      <p class="txt-muted" style="font-size:.85rem;margin-bottom:.5rem">
+        Connectez-vous en SSH au routeur, puis entrez les commandes suivantes en mode système :
+      </p>
+      <div style="background:#0a0a0a;border-radius:8px;padding:12px 16px;font-family:monospace;
+                  font-size:.82rem;line-height:1.8;border:1px solid var(--border)">
+        <span style="color:#888"># Activer le centre d'information</span><br>
+        <span style="color:#4af">info-center enable</span><br><br>
+        <span style="color:#888"># Déclarer le serveur syslog (remplacez l'IP)</span><br>
+        <span style="color:#4af">info-center loghost <span style="color:#f90">{{ request.host.split(':')[0] }}</span> facility local6</span><br><br>
+        <span style="color:#888"># Activer l'envoi sur le canal syslog</span><br>
+        <span style="color:#4af">info-center loghost source <span style="color:#f90">GigabitEthernet0/0/0</span></span><br><br>
+        <span style="color:#888"># Vérification</span><br>
+        <span style="color:#4af">display info-center</span>
+      </div>
+      <p class="txt-muted" style="font-size:.78rem;margin-top:.4rem">
+        Port UDP standard : <strong>514</strong> — mappé automatiquement vers le récepteur interne.
+        Si votre routeur propose un champ port, entrez <strong>514</strong>.
+      </p>
+    </div>
+
+    <div style="border-top:1px solid var(--border);margin:1rem 0"></div>
+
+    <!-- Méthode 2 : eWeb -->
+    <div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:.6rem">
+        <span style="background:#1a6fa8;color:#fff;font-size:.72rem;font-weight:700;
+                     padding:2px 8px;border-radius:12px">MÉTHODE 2</span>
+        <strong>Via l'interface Web eWeb (sans SSH)</strong>
+      </div>
+      <p class="txt-muted" style="font-size:.85rem;margin-bottom:.75rem">
+        Accédez à l'interface web du routeur (généralement <code style="font-size:.78rem;
+        background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px">http://192.168.x.x</code>)
+        puis suivez le chemin :
+      </p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <!-- Étapes -->
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <div style="min-width:26px;height:26px;border-radius:50%;background:var(--red);
+                      display:flex;align-items:center;justify-content:center;
+                      font-size:.8rem;font-weight:700;flex-shrink:0">1</div>
+          <div>
+            <div style="font-size:.88rem;font-weight:600">Accès au menu principal</div>
+            <div class="txt-muted" style="font-size:.82rem">
+              Menu <strong>Diagnostic</strong> → <strong>Info-center</strong>
+              <br><em>Ou selon la version firmware : System → Log Management → Loghost</em>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <div style="min-width:26px;height:26px;border-radius:50%;background:var(--red);
+                      display:flex;align-items:center;justify-content:center;
+                      font-size:.8rem;font-weight:700;flex-shrink:0">2</div>
+          <div>
+            <div style="font-size:.88rem;font-weight:600">Activer l'info-center</div>
+            <div class="txt-muted" style="font-size:.82rem">
+              Cochez/activez <strong>"Info-center Enable"</strong> si ce n'est pas déjà fait.
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <div style="min-width:26px;height:26px;border-radius:50%;background:var(--red);
+                      display:flex;align-items:center;justify-content:center;
+                      font-size:.8rem;font-weight:700;flex-shrink:0">3</div>
+          <div>
+            <div style="font-size:.88rem;font-weight:600">Ajouter un loghost</div>
+            <div class="txt-muted" style="font-size:.82rem">
+              Cliquez <strong>Ajouter</strong> et renseignez :
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 12px;
+                        font-size:.82rem;margin-top:6px;background:rgba(255,255,255,.04);
+                        border-radius:6px;padding:8px 12px">
+              <span class="txt-muted">Log host IP :</span>
+              <code style="color:#f90">{{ request.host.split(':')[0] }}</code>
+            </div>
+            <div class="alert alert--info" style="margin-top:.5rem;font-size:.8rem;padding:6px 10px">
+              <i class="fa-solid fa-circle-info"></i>
+              L'AR651W n'expose pas de champ "port" dans eWeb — il utilise toujours le port standard
+              <strong>UDP 514</strong>. HuwaControl redirige automatiquement ce port vers son récepteur interne.
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <div style="min-width:26px;height:26px;border-radius:50%;background:var(--red);
+                      display:flex;align-items:center;justify-content:center;
+                      font-size:.8rem;font-weight:700;flex-shrink:0">4</div>
+          <div>
+            <div style="font-size:.88rem;font-weight:600">Sauvegarder et tester</div>
+            <div class="txt-muted" style="font-size:.82rem">
+              Cliquez <strong>Appliquer / OK</strong>. Les logs devraient apparaître dans cette page sous quelques secondes.
+              Si rien n'apparaît, vérifiez que le port UDP <strong>{{ syslog_port }}</strong> est accessible (pas de firewall entre le routeur et ce serveur).
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</details>
+
+<script>
+// Toggle chevron icon on details open/close
+const _det = document.getElementById('syslog-tutorial');
+const _chv = document.getElementById('tutorial-chevron');
+if (_det && _chv) {
+  _det.addEventListener('toggle', () => {
+    _chv.className = _det.open
+      ? 'fa-solid fa-chevron-up'
+      : 'fa-solid fa-chevron-down';
+    _chv.style.cssText = 'margin-left:auto;font-size:.75rem;color:var(--txt-muted)';
+  });
+}
+</script>
+
+<!-- Mini-dashboard syslog 24h -->
+<div class="card mb-3" id="syslog-stats-card" style="margin-bottom:1rem">
+  <div class="card__header">
+    <span><i class="fa-solid fa-chart-pie" style="color:var(--red)"></i> Statistiques — dernières 24h</span>
+    <div class="btn-group" id="stats-period-group" style="font-size:.8rem">
+      <button class="btn-period btn-period--active" data-hours="24">24h</button>
+      <button class="btn-period" data-hours="48">48h</button>
+      <button class="btn-period" data-hours="168">7j</button>
+    </div>
+  </div>
+  <div class="card__body">
+    <!-- KPIs syslog -->
+    <div id="syslog-stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:1rem">
+      <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px;text-align:center">
+        <div style="font-size:1.4rem;font-weight:700;color:var(--txt)" id="sl-total">—</div>
+        <div style="font-size:.75rem;color:var(--txt-muted);margin-top:2px">Messages</div>
+      </div>
+      <div style="background:rgba(204,0,0,.08);border:1px solid rgba(204,0,0,.2);
+                  border-radius:8px;padding:10px 14px;text-align:center">
+        <div style="font-size:1.4rem;font-weight:700;color:#ff6666" id="sl-errors">—</div>
+        <div style="font-size:.75rem;color:var(--txt-muted);margin-top:2px">Erreurs</div>
+      </div>
+      <div style="background:rgba(224,112,0,.08);border:1px solid rgba(224,112,0,.2);
+                  border-radius:8px;padding:10px 14px;text-align:center">
+        <div style="font-size:1.4rem;font-weight:700;color:#f5a800" id="sl-warnings">—</div>
+        <div style="font-size:.75rem;color:var(--txt-muted);margin-top:2px">Avertissements</div>
+      </div>
+      <div style="background:rgba(58,123,213,.08);border:1px solid rgba(58,123,213,.2);
+                  border-radius:8px;padding:10px 14px;text-align:center">
+        <div style="font-size:1.4rem;font-weight:700;color:#5a9bf5" id="sl-wifi-on">—</div>
+        <div style="font-size:.75rem;color:var(--txt-muted);margin-top:2px">Connexions WiFi</div>
+      </div>
+      <div style="background:rgba(255,255,255,.03);border-radius:8px;padding:10px 14px;text-align:center">
+        <div style="font-size:1.4rem;font-weight:700;color:#888" id="sl-wifi-off">—</div>
+        <div style="font-size:.75rem;color:var(--txt-muted);margin-top:2px">Déconnexions WiFi</div>
+      </div>
+    </div>
+    <!-- Top programmes -->
+    <div id="sl-top-programs" style="font-size:.82rem;color:var(--txt-muted)"></div>
+  </div>
+</div>
+
+<!-- Filtres -->
+<div class="toolbar" style="gap:12px;flex-wrap:wrap">
+  <div style="display:flex;align-items:center;gap:6px">
+    <label class="form-label" style="margin:0;white-space:nowrap">Sévérité max :</label>
+    <select class="form-input" id="filter-severity" style="width:auto;padding:4px 10px">
+      <option value="7">Debug (tout)</option>
+      <option value="6" selected>Info</option>
+      <option value="5">Notice</option>
+      <option value="4">Warning</option>
+      <option value="3">Error</option>
+      <option value="2">Critical</option>
+      <option value="1">Alert</option>
+      <option value="0">Emergency</option>
+    </select>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:200px">
+    <i class="fa-solid fa-magnifying-glass txt-muted"></i>
+    <input class="form-input" type="text" id="filter-search"
+           placeholder="Recherche dans les messages…" style="flex:1">
+  </div>
+  <button class="btn btn--primary" id="btn-apply">
+    <i class="fa-solid fa-filter"></i> Filtrer
+  </button>
+  <button class="btn btn--ghost" id="btn-refresh">
+    <i class="fa-solid fa-rotate"></i> Actualiser
+  </button>
+  <a href="/api/export/syslogs" class="btn btn--ghost" style="font-size:12px;padding:4px 12px">
+    <i class="fa-solid fa-file-csv"></i> CSV
+  </a>
+  {% if current_user.is_admin %}
+  <button class="btn btn--danger" id="btn-purge" title="Supprimer les logs de plus de 30 jours">
+    <i class="fa-solid fa-trash"></i> Purge 30j
+  </button>
+  {% endif %}
+</div>
+
+<!-- Barre infos + sélecteur taille page -->
+<div style="display:flex;align-items:center;gap:16px;margin:0.75rem 0;flex-wrap:wrap">
+  <span style="font-size:.85rem;color:var(--txt-muted)">
+    <span id="log-range">—</span>
+    <span style="opacity:.5;margin:0 4px">/</span>
+    <span id="log-count-total">—</span> entrées
+  </span>
+  <span id="log-live-badge" style="font-size:.82rem;color:var(--green);display:flex;align-items:center;gap:5px">
+    <span class="dot dot--up"></span> En direct
+  </span>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+    <label style="font-size:.82rem;color:var(--txt-muted);white-space:nowrap">Par page :</label>
+    <select class="form-input" id="page-size-select" style="width:auto;padding:4px 10px;font-size:.82rem">
+      <option value="10">10</option>
+      <option value="20">20</option>
+      <option value="50" selected>50</option>
+      <option value="120">120</option>
+    </select>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="card">
+  <div class="card__body card__body--no-pad" style="overflow-x:auto">
+    <table class="table" id="log-table" style="font-size:.82rem">
+      <thead>
+        <tr>
+          <th style="width:145px">Horodatage</th>
+          <th style="width:76px">Sévérité</th>
+          <th style="width:115px">Source</th>
+          <th style="width:115px">Programme</th>
+          <th>Message</th>
+        </tr>
+      </thead>
+      <tbody id="log-tbody">
+        <tr><td colspan="5" class="txt-muted txt-center">Chargement…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Pagination -->
+<div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:1rem;flex-wrap:wrap" id="pagination-bar">
+  <button class="btn btn--ghost" id="btn-first" disabled title="Première page">
+    <i class="fa-solid fa-angles-left"></i>
+  </button>
+  <button class="btn btn--ghost" id="btn-prev" disabled title="Page précédente">
+    <i class="fa-solid fa-chevron-left"></i>
+  </button>
+  <div id="page-numbers" style="display:flex;gap:4px"></div>
+  <button class="btn btn--ghost" id="btn-next" title="Page suivante">
+    <i class="fa-solid fa-chevron-right"></i>
+  </button>
+  <button class="btn btn--ghost" id="btn-last" title="Dernière page">
+    <i class="fa-solid fa-angles-right"></i>
+  </button>
+  <span class="txt-muted" style="font-size:.8rem;margin-left:8px" id="page-info"></span>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentPage = 0;
+let totalRows   = 0;
+let pageSize    = 50;
+
+const SEV_LABELS = {
+  0: ['EMERG',  '#ff0000'],
+  1: ['ALERT',  '#ff3333'],
+  2: ['CRIT',   '#ff6600'],
+  3: ['ERROR',  '#ff4444'],
+  4: ['WARN',   '#e09000'],
+  5: ['NOTICE', '#aaaaaa'],
+  6: ['INFO',   '#4488cc'],
+  7: ['DEBUG',  '#666666'],
+};
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function fmtTs(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts * 1000);
+  return d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR');
+}
+function sevBadge(sev) {
+  const [label, color] = SEV_LABELS[sev] ?? ['?', '#888'];
+  return `<span style="font-size:.75rem;font-weight:700;color:${color}">${label}</span>`;
+}
+
+// ── Pagination numérotée ──────────────────────────────────────────────────────
+function renderPageNumbers(current, total) {
+  const container = document.getElementById('page-numbers');
+  if (total <= 1) { container.innerHTML = ''; return; }
+
+  // Afficher max 7 boutons : [1] ... [p-1] [p] [p+1] ... [N]
+  const pages = [];
+  pages.push(0);
+  if (current > 2)          pages.push('…');
+  if (current > 1)          pages.push(current - 1);
+  if (current !== 0 && current !== total - 1) pages.push(current);
+  if (current < total - 2)  pages.push(current + 1);
+  if (current < total - 3)  pages.push('…');
+  pages.push(total - 1);
+  // Dédoublonner
+  const unique = [...new Set(pages)];
+
+  container.innerHTML = unique.map(p => {
+    if (p === '…') return `<span style="color:#555;padding:0 4px;line-height:32px">…</span>`;
+    const active = p === current;
+    return `<button class="btn ${active ? 'btn--primary' : 'btn--ghost'}"
+              style="min-width:32px;padding:4px 8px;font-size:.82rem"
+              onclick="loadLogs(${p})" ${active ? 'disabled' : ''}>${p + 1}</button>`;
+  }).join('');
+}
+
+function loadLogs(page) {
+  const severity = parseInt(document.getElementById('filter-severity').value);
+  const search   = document.getElementById('filter-search').value.trim();
+  const offset   = page * pageSize;
+
+  fetch(`/api/syslogs?limit=${pageSize}&offset=${offset}&severity=${severity}&q=${encodeURIComponent(search)}`)
+    .then(r => r.json())
+    .then(d => {
+      totalRows   = d.total;
+      currentPage = page;
+      const totalPages = Math.max(1, Math.ceil(d.total / pageSize));
+      const from = d.total === 0 ? 0 : offset + 1;
+      const to   = Math.min(offset + d.rows.length, d.total);
+
+      // Infos
+      document.getElementById('log-range').textContent      = d.total ? `${from}–${to}` : '0';
+      document.getElementById('log-count-total').textContent = d.total;
+      document.getElementById('page-info').textContent       = `Page ${page + 1} / ${totalPages}`;
+
+      // Boutons navigation
+      document.getElementById('btn-first').disabled = page === 0;
+      document.getElementById('btn-prev').disabled  = page === 0;
+      document.getElementById('btn-next').disabled  = page >= totalPages - 1;
+      document.getElementById('btn-last').disabled  = page >= totalPages - 1;
+
+      // Numéros de pages
+      renderPageNumbers(page, totalPages);
+
+      // Tableau
+      const tbody = document.getElementById('log-tbody');
+      if (!d.rows.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="txt-muted txt-center" style="padding:24px">' +
+          (totalRows === 0
+            ? '<i class="fa-solid fa-inbox" style="font-size:1.5rem;opacity:.3;display:block;margin-bottom:8px"></i>'
+              + 'Aucun log reçu — vérifiez la configuration syslog du routeur.'
+            : 'Aucun résultat pour ce filtre.') +
+          '</td></tr>';
+        return;
+      }
+      tbody.innerHTML = d.rows.map(r => {
+        const rowStyle = r.severity <= 3 ? 'background:rgba(204,0,0,0.06)' :
+                         r.severity === 4 ? 'background:rgba(224,112,0,0.05)' : '';
+        return `<tr style="${rowStyle}">
+          <td class="txt-mono" style="white-space:nowrap;color:var(--txt-muted);font-size:.78rem">${fmtTs(r.ts)}</td>
+          <td>${sevBadge(r.severity)}</td>
+          <td class="txt-mono" style="font-size:.75rem;color:var(--txt-muted)">${esc(r.source_ip || '—')}</td>
+          <td class="txt-mono" style="font-size:.75rem">${esc(r.program || '—')}</td>
+          <td style="word-break:break-word;max-width:600px;font-size:.82rem">${esc(r.message)}</td>
+        </tr>`;
+      }).join('');
+    })
+    .catch(() => {
+      document.getElementById('log-tbody').innerHTML =
+        '<tr><td colspan="5" class="txt-red txt-center">Erreur de chargement</td></tr>';
+    });
+}
+
+// Sélecteur taille de page
+document.getElementById('page-size-select').addEventListener('change', e => {
+  pageSize = parseInt(e.target.value);
+  loadLogs(0);
+});
+
+document.getElementById('btn-apply').addEventListener('click',  () => loadLogs(0));
+document.getElementById('btn-refresh').addEventListener('click', () => loadLogs(currentPage));
+document.getElementById('filter-search').addEventListener('keydown', e => {
+  if (e.key === 'Enter') loadLogs(0);
+});
+document.getElementById('btn-first').addEventListener('click', () => loadLogs(0));
+document.getElementById('btn-prev').addEventListener('click',  () => loadLogs(currentPage - 1));
+document.getElementById('btn-next').addEventListener('click',  () => loadLogs(currentPage + 1));
+document.getElementById('btn-last').addEventListener('click',  () => {
+  loadLogs(Math.max(0, Math.ceil(totalRows / pageSize) - 1));
+});
+
+{% if current_user.is_admin %}
+document.getElementById('btn-purge').addEventListener('click', () => {
+  if (!confirm('Supprimer tous les logs de plus de 30 jours ?')) return;
+  fetch('/api/syslogs?days=30', { method: 'DELETE' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) { showToast('Purge effectuée', 'success'); loadLogs(0); }
+    });
+});
+{% endif %}
+
+// ── Stats syslog ──────────────────────────────────────────────────────────────
+let _statHours = 24;
+
+function loadSyslogStats(hours) {
+  const statIds = ['sl-total','sl-errors','sl-warnings','sl-wifi-on','sl-wifi-off'];
+  fetch(`/api/syslogs/stats?hours=${hours}`)
+    .then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    })
+    .then(d => {
+      if (d.error) throw new Error(d.error);
+      document.getElementById('sl-total').textContent    = d.total    ?? '0';
+      document.getElementById('sl-errors').textContent   = d.errors   ?? '0';
+      document.getElementById('sl-warnings').textContent = d.warnings ?? '0';
+      document.getElementById('sl-wifi-on').textContent  = d.wifi_connect    ?? '0';
+      document.getElementById('sl-wifi-off').textContent = d.wifi_disconnect ?? '0';
+
+      const topEl = document.getElementById('sl-top-programs');
+      if (d.top_programs && d.top_programs.length) {
+        topEl.innerHTML = '<span style="color:#555;font-size:.75rem;margin-right:8px">TOP PROGRAMMES :</span>'
+          + d.top_programs.map(p =>
+              `<span style="background:rgba(255,255,255,.06);border-radius:4px;
+                     padding:2px 8px;margin-right:6px;font-family:monospace">
+                ${esc(p.program)} <span style="color:#555">${p.count}</span>
+              </span>`
+            ).join('');
+      } else {
+        topEl.innerHTML = '';
+      }
+    })
+    .catch(err => {
+      console.warn('loadSyslogStats:', err);
+      statIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '0';
+      });
+    });
+}
+
+document.querySelectorAll('#stats-period-group .btn-period').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#stats-period-group .btn-period')
+      .forEach(b => b.classList.remove('btn-period--active'));
+    btn.classList.add('btn-period--active');
+    _statHours = parseInt(btn.dataset.hours);
+    loadSyslogStats(_statHours);
+    // Mettre à jour le titre
+    const lbl = btn.dataset.hours === '168' ? '7 derniers jours'
+              : btn.dataset.hours === '48'  ? 'dernières 48h'
+              : 'dernières 24h';
+    document.querySelector('#syslog-stats-card .card__header span')
+      .innerHTML = `<i class="fa-solid fa-chart-pie" style="color:var(--red)"></i> Statistiques — ${lbl}`;
+  });
+});
+
+// Auto-refresh toutes les 15s
+loadLogs(0);
+loadSyslogStats(_statHours);
+setInterval(() => loadLogs(currentPage), 15000);
+setInterval(() => loadSyslogStats(_statHours), 60000);
+</script>
+{% endblock %}

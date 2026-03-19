@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Rapport{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title"><i class="fa-solid fa-file-lines"></i> Rapport journalier</h1>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button class="btn btn--ghost" id="btn-refresh-report">
+      <i class="fa-solid fa-rotate"></i> Actualiser
+    </button>
+    {% if current_user.is_admin %}
+    <button class="btn btn--primary" id="btn-send-report">
+      <i class="fa-solid fa-paper-plane"></i> Envoyer maintenant
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Contenu du rapport -->
+<div id="report-container">
+  <div class="card" id="report-card" style="display:none">
+    <div class="card__header">
+      <span id="report-title" style="font-size:1.05rem;font-weight:600"></span>
+      <span class="txt-muted" style="font-size:.82rem" id="report-generated"></span>
+    </div>
+    <div class="card__body">
+      <!-- Champs stats -->
+      <div id="report-fields" style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:1.25rem"></div>
+      <!-- Description -->
+      <div id="report-description" style="white-space:pre-wrap;font-size:.88rem;line-height:1.7;color:var(--txt)"></div>
+    </div>
+  </div>
+
+  <div id="report-loading" class="card">
+    <div class="card__body txt-muted txt-center">
+      <i class="fa-solid fa-spinner fa-spin"></i> Génération du rapport…
+    </div>
+  </div>
+
+  <div id="report-error" class="card" style="display:none">
+    <div class="card__body txt-red txt-center">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span id="report-error-msg">Erreur lors de la génération du rapport.</span>
+    </div>
+  </div>
+</div>
+
+<!-- Historique envois -->
+<div class="card mt-4">
+  <div class="card__header">
+    <span><i class="fa-solid fa-clock-rotate-left"></i> Historique des envois</span>
+  </div>
+  <div class="card__body">
+    <div class="alert alert--info" style="font-size:.85rem">
+      <i class="fa-solid fa-circle-info"></i>
+      Le rapport est envoyé automatiquement chaque jour à l'heure configurée dans les paramètres.
+      Vous pouvez aussi déclencher un envoi manuel via le bouton "Envoyer maintenant".
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function loadReport() {
+  document.getElementById('report-loading').style.display = '';
+  document.getElementById('report-card').style.display   = 'none';
+  document.getElementById('report-error').style.display  = 'none';
+
+  fetch('/api/reports/latest')
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('report-loading').style.display = 'none';
+      if (data.error) {
+        document.getElementById('report-error').style.display = '';
+        document.getElementById('report-error-msg').textContent = data.error;
+        return;
+      }
+
+      document.getElementById('report-title').textContent = data.title || 'Rapport';
+      document.getElementById('report-generated').textContent =
+        'Généré le ' + new Date().toLocaleString('fr-FR');
+
+      // Fields (stats pills)
+      const fieldsEl = document.getElementById('report-fields');
+      fieldsEl.innerHTML = (data.fields || []).map(f => `
+        <div style="background:rgba(255,255,255,.05);border-radius:8px;padding:10px 18px;min-width:100px;text-align:center">
+          <div style="font-size:1.4rem;font-weight:700;color:var(--txt)">${esc(f.value)}</div>
+          <div style="font-size:.78rem;color:var(--txt-muted);margin-top:2px">${esc(f.name)}</div>
+        </div>`).join('');
+
+      // Description — render markdown bold (**text**) and line breaks
+      const raw = data.description || '';
+      const html = raw
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+      document.getElementById('report-description').innerHTML = html;
+
+      document.getElementById('report-card').style.display = '';
+    })
+    .catch(e => {
+      document.getElementById('report-loading').style.display = 'none';
+      document.getElementById('report-error').style.display  = '';
+      document.getElementById('report-error-msg').textContent = 'Erreur réseau : ' + e.message;
+    });
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+document.getElementById('btn-refresh-report').addEventListener('click', loadReport);
+
+{% if current_user.is_admin %}
+document.getElementById('btn-send-report')?.addEventListener('click', () => {
+  const btn = document.getElementById('btn-send-report');
+  btn.disabled = true;
+  fetch('/api/reports/send', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) showToast('Rapport envoyé sur tous les canaux configurés', 'success');
+      else showToast('Erreur lors de l\'envoi', 'error');
+    })
+    .catch(() => showToast('Erreur réseau', 'error'))
+    .finally(() => { btn.disabled = false; });
+});
+{% endif %}
+
+loadReport();
+</script>
+{% endblock %}

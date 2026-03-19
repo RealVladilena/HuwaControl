@@ -1,0 +1,561 @@
+{% extends "base.html" %}
+{% block title %}Routeurs{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title"><i class="fa-solid fa-router"></i> Gestion des routeurs</h1>
+  <button class="btn btn--primary" id="btn-add-router">
+    <i class="fa-solid fa-plus"></i> Ajouter un routeur
+  </button>
+</div>
+
+<div class="card">
+  <div class="card__body card__body--no-pad">
+    <table class="table" id="routers-table">
+      <thead>
+        <tr>
+          <th>Nom</th><th>IP</th><th>SNMP</th><th>Port</th>
+          <th>Intervalle</th><th>Rétention</th><th>Statut</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="routers-tbody">
+        <tr><td colspan="8" class="txt-muted txt-center">Chargement…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Modal add/edit ──────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-card" style="max-width:560px">
+    <div class="modal-header">
+      <span id="modal-title">Routeur</span>
+      <div style="display:flex;gap:.5rem;align-items:center">
+        <button class="btn btn--ghost" id="btn-tuto" title="Guide de configuration AR651W"
+                style="font-size:.8rem;padding:.25rem .6rem">
+          <i class="fa-solid fa-circle-question"></i> Guide AR651W
+        </button>
+        <button class="btn-icon" id="modal-close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    <div class="modal-body">
+
+      <input type="hidden" id="r-id">
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nom <span class="txt-red">*</span></label>
+          <input class="form-input" type="text" id="r-name" placeholder="Huawei AR651W">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Adresse IP <span class="txt-red">*</span></label>
+          <input class="form-input" type="text" id="r-ip" placeholder="192.168.1.1">
+        </div>
+      </div>
+
+      <!-- Version SNMP -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Version SNMP</label>
+          <select class="form-input" id="r-version">
+            <option value="3">SNMPv3 (recommandé)</option>
+            <option value="2">SNMPv2c (legacy)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Port SNMP</label>
+          <input class="form-input" type="number" id="r-port" min="1" max="65535" value="161">
+        </div>
+      </div>
+
+      <!-- Champs v2c -->
+      <div id="section-v2">
+        <div class="form-group">
+          <label class="form-label">Community SNMP</label>
+          <input class="form-input" type="text" id="r-community" placeholder="public">
+        </div>
+      </div>
+
+      <!-- Champs v3 -->
+      <div id="section-v3" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Nom d'utilisateur SNMPv3 <span class="txt-red">*</span></label>
+          <input class="form-input" type="text" id="r-v3-username" placeholder="huwamonitor">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Niveau de sécurité</label>
+            <select class="form-input" id="r-v3-level">
+              <option value="authPriv">authPriv (auth + chiffrement)</option>
+              <option value="authNoPriv">authNoPriv (auth seulement)</option>
+              <option value="noAuthNoPriv">noAuthNoPriv (aucun)</option>
+            </select>
+          </div>
+        </div>
+        <div id="section-v3-auth">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Protocole d'authentification</label>
+              <select class="form-input" id="r-v3-auth-proto">
+                <option value="SHA">SHA (recommandé)</option>
+                <option value="MD5">MD5</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mot de passe d'authentification</label>
+              <input class="form-input" type="password" id="r-v3-auth-pass" placeholder="min. 8 caractères">
+            </div>
+          </div>
+        </div>
+        <div id="section-v3-priv">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Protocole de chiffrement</label>
+              <select class="form-input" id="r-v3-priv-proto">
+                <option value="AES">AES128 (recommandé)</option>
+                <option value="DES">DES</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mot de passe de chiffrement</label>
+              <input class="form-input" type="password" id="r-v3-priv-pass" placeholder="min. 8 caractères">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Intervalle <span class="txt-muted">(s)</span></label>
+          <input class="form-input" type="number" id="r-poll" min="10" max="3600" value="60">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Rétention <span class="txt-muted">(jours)</span></label>
+          <input class="form-input" type="number" id="r-retention" min="1" max="365" value="30">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-check">
+          <input type="checkbox" id="r-enabled" checked>
+          <span>Activer la collecte SNMP</span>
+        </label>
+      </div>
+
+      <div id="modal-error" class="alert alert--error" style="display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" id="modal-cancel">Annuler</button>
+      <button class="btn btn--primary" id="modal-save">
+        <i class="fa-solid fa-floppy-disk"></i> Enregistrer
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal tuto AR651W ───────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="tuto-overlay">
+  <div class="modal-card" style="max-width:680px;max-height:90vh;overflow-y:auto">
+    <div class="modal-header">
+      <span><i class="fa-solid fa-terminal"></i> Configuration SNMPv3 — Huawei AR651W</span>
+      <button class="btn-icon" id="tuto-close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" style="font-size:.88rem">
+
+      <!-- Onglets Web / CLI -->
+      <div class="tuto-tabs">
+        <button class="tuto-tab tuto-tab--active" data-tab="web">
+          <i class="fa-solid fa-globe"></i> Interface Web
+        </button>
+        <button class="tuto-tab" data-tab="cli">
+          <i class="fa-solid fa-terminal"></i> CLI (SSH)
+        </button>
+      </div>
+
+      <!-- ── TAB WEB ───────────────────────────────────────────────────────── -->
+      <div id="tab-web">
+        <div class="alert alert--info" style="margin:.75rem 0">
+          <i class="fa-solid fa-circle-info"></i>
+          Ouvre <b>http://[IP du routeur]</b> dans ton navigateur et connecte-toi.
+        </div>
+
+        <div class="tuto-step">
+          <div class="tuto-step__num">1</div>
+          <div class="tuto-step__body">
+            <div class="tuto-step__title">Accéder aux paramètres SNMP</div>
+            <p class="tuto-note" style="margin:0">Dans le menu principal, navigue vers :</p>
+            <div class="tuto-path">
+              <span>Configuration avancée</span>
+              <i class="fa-solid fa-chevron-right"></i>
+              <span>Gestion du système</span>
+              <i class="fa-solid fa-chevron-right"></i>
+              <span>SNMP</span>
+            </div>
+            <p class="tuto-note">Sur certaines versions VRP Web : <b>Maintenance → SNMP</b> ou <b>System → Network Management → SNMP</b>.</p>
+          </div>
+        </div>
+
+        <div class="tuto-step">
+          <div class="tuto-step__num">2</div>
+          <div class="tuto-step__body">
+            <div class="tuto-step__title">Activer SNMPv3 uniquement</div>
+            <p class="tuto-note" style="margin:0">Dans la section <b>Version SNMP</b> :</p>
+            <ul class="tuto-list">
+              <li>Décocher / désactiver <b>SNMPv1</b> et <b>SNMPv2c</b></li>
+              <li>Cocher / activer <b>SNMPv3</b></li>
+              <li>Cliquer <b>Appliquer</b></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="tuto-step">
+          <div class="tuto-step__num">3</div>
+          <div class="tuto-step__body">
+            <div class="tuto-step__title">Créer un utilisateur SNMPv3</div>
+            <p class="tuto-note" style="margin:0">Dans <b>Utilisateurs SNMPv3</b>, cliquer <b>Ajouter</b> :</p>
+            <table class="tuto-table">
+              <tr><td>Nom d'utilisateur</td><td><code class="tuto-var">huwamonitor</code></td></tr>
+              <tr><td>Groupe</td><td>Créer ou sélectionner un groupe existant</td></tr>
+              <tr><td>Niveau de sécurité</td><td><b>authPriv</b> (authentification + chiffrement)</td></tr>
+              <tr><td>Protocole d'auth</td><td><b>SHA</b></td></tr>
+              <tr><td>Mot de passe auth</td><td><code class="tuto-var">AuthMotDePasse</code> (min. 8 car.)</td></tr>
+              <tr><td>Protocole de chiffrement</td><td><b>AES128</b></td></tr>
+              <tr><td>Mot de passe chiffrement</td><td><code class="tuto-var">PrivMotDePasse</code> (min. 8 car.)</td></tr>
+            </table>
+            <p class="tuto-note">Ces valeurs doivent correspondre exactement à ce que tu saisis dans HuwaControl.</p>
+          </div>
+        </div>
+
+        <div class="tuto-step">
+          <div class="tuto-step__num">4</div>
+          <div class="tuto-step__body">
+            <div class="tuto-step__title">Créer un groupe et assigner la vue de lecture</div>
+            <p class="tuto-note" style="margin:0">Dans <b>Groupes SNMPv3</b>, cliquer <b>Ajouter</b> :</p>
+            <table class="tuto-table">
+              <tr><td>Nom du groupe</td><td><code>huwagroup</code></td></tr>
+              <tr><td>Niveau de sécurité</td><td><b>privacy</b></td></tr>
+              <tr><td>Vue de lecture</td><td><b>iso</b> (ou view par défaut)</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="tuto-step">
+          <div class="tuto-step__num">5</div>
+          <div class="tuto-step__body">
+            <div class="tuto-step__title">Sauvegarder</div>
+            <p class="tuto-note" style="margin:0">Cliquer <b>Appliquer</b> puis <b>Sauvegarder la configuration</b> (icône disquette ou menu Fichier → Sauvegarder).</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TAB CLI ───────────────────────────────────────────────────────── -->
+      <div id="tab-cli" style="display:none">
+        <div class="alert alert--info" style="margin:.75rem 0">
+          <i class="fa-solid fa-circle-info"></i>
+          Connecte-toi au routeur en SSH ou via la console, puis entre en <b>system-view</b>.
+        </div>
+
+        <div class="tuto-step">
+          <div class="tuto-step__num">1</div>
+          <div class="tuto-step__body">
+            <div class="tuto-step__title">Activer SNMPv3 uniquement</div>
+            <pre class="code-block">system-view
+snmp-agent
+snmp-agent sys-info version v3</pre>
+          </div>
+        </div>
+        <div class="tuto-step">
+          <div class="tuto-step__num">2</div>
+          <div class="tuto-step__body">
+            <div class="tuto-step__title">Créer le groupe SNMPv3</div>
+            <pre class="code-block">snmp-agent group v3 huwagroup privacy read-view iso</pre>
+          </div>
+        </div>
+        <div class="tuto-step">
+          <div class="tuto-step__num">3</div>
+          <div class="tuto-step__body">
+            <div class="tuto-step__title">Créer l'utilisateur SNMPv3</div>
+            <pre class="code-block">snmp-agent usm-user v3 huwamonitor huwagroup \
+  authentication-mode sha1 <span class="tuto-var">AuthMotDePasse</span> \
+  privacy-mode aes128 <span class="tuto-var">PrivMotDePasse</span></pre>
+          </div>
+        </div>
+        <div class="tuto-step">
+          <div class="tuto-step__num">4</div>
+          <div class="tuto-step__body">
+            <div class="tuto-step__title">Sauvegarder</div>
+            <pre class="code-block">return
+save
+y</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Récap commun -->
+      <div style="margin-top:1rem;padding:1rem;background:var(--bg-card);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-weight:600;margin-bottom:.75rem"><i class="fa-solid fa-clipboard-list"></i> Paramètres à saisir dans HuwaControl</div>
+        <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+          <tr><td style="padding:.3rem .5rem;color:var(--txt-muted);width:45%">Version SNMP</td><td><b>SNMPv3</b></td></tr>
+          <tr><td style="padding:.3rem .5rem;color:var(--txt-muted)">Utilisateur</td><td><code>huwamonitor</code></td></tr>
+          <tr><td style="padding:.3rem .5rem;color:var(--txt-muted)">Niveau de sécurité</td><td><b>authPriv</b></td></tr>
+          <tr><td style="padding:.3rem .5rem;color:var(--txt-muted)">Proto auth</td><td><b>SHA</b></td></tr>
+          <tr><td style="padding:.3rem .5rem;color:var(--txt-muted)">Proto chiffrement</td><td><b>AES128</b></td></tr>
+          <tr><td style="padding:.3rem .5rem;color:var(--txt-muted)">Port SNMP</td><td><b>161</b></td></tr>
+        </table>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn--primary" id="tuto-done">Compris, retour au formulaire</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.tuto-step { display:flex; gap:1rem; margin-bottom:1.25rem; }
+.tuto-step__num {
+  flex-shrink:0; width:28px; height:28px; border-radius:50%;
+  background:var(--accent); color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:.85rem;
+}
+.tuto-step__title { font-weight:600; margin-bottom:.5rem; }
+.tuto-note { color:var(--txt-muted); margin:.4rem 0 0; font-size:.83rem; }
+.code-block {
+  background:var(--bg-body); border:1px solid var(--border); border-radius:6px;
+  padding:.7rem 1rem; font-size:.82rem; white-space:pre-wrap; overflow-x:auto;
+  font-family:monospace; margin:.4rem 0;
+}
+.tuto-var { color:var(--accent); font-style:italic; }
+.alert--info { background:rgba(99,102,241,.1); border-color:var(--accent); color:var(--txt); }
+/* Onglets */
+.tuto-tabs { display:flex; gap:.5rem; margin-bottom:.75rem; }
+.tuto-tab {
+  padding:.4rem .9rem; border-radius:6px; border:1px solid var(--border);
+  background:transparent; color:var(--txt-muted); cursor:pointer; font-size:.85rem;
+}
+.tuto-tab--active { background:var(--accent); border-color:var(--accent); color:#fff; }
+/* Tableau récap */
+.tuto-table { width:100%; border-collapse:collapse; font-size:.83rem; margin:.4rem 0; }
+.tuto-table td { padding:.25rem .5rem; border-bottom:1px solid var(--border); }
+.tuto-table tr:last-child td { border-bottom:none; }
+.tuto-table td:first-child { color:var(--txt-muted); width:45%; }
+/* Chemin nav */
+.tuto-path {
+  display:flex; align-items:center; gap:.4rem; flex-wrap:wrap;
+  margin:.5rem 0; font-size:.85rem;
+}
+.tuto-path span {
+  background:var(--bg-body); border:1px solid var(--border);
+  border-radius:4px; padding:.15rem .5rem;
+}
+.tuto-path i { color:var(--txt-muted); font-size:.7rem; }
+.tuto-list { margin:.4rem 0 0 1.2rem; color:var(--txt-muted); font-size:.83rem; }
+.tuto-list li { margin:.2rem 0; }
+</style>
+<script>
+// ── Version toggle ─────────────────────────────────────────────────────────────
+function onVersionChange() {
+  const v = parseInt(document.getElementById('r-version').value);
+  document.getElementById('section-v2').style.display = v === 2 ? '' : 'none';
+  document.getElementById('section-v3').style.display = v === 3 ? '' : 'none';
+}
+function onLevelChange() {
+  const lvl = document.getElementById('r-v3-level').value;
+  document.getElementById('section-v3-auth').style.display =
+    lvl === 'noAuthNoPriv' ? 'none' : '';
+  document.getElementById('section-v3-priv').style.display =
+    lvl === 'authPriv' ? '' : 'none';
+}
+document.getElementById('r-version').addEventListener('change', onVersionChange);
+document.getElementById('r-v3-level').addEventListener('change', onLevelChange);
+
+// ── Chargement table ───────────────────────────────────────────────────────────
+function loadRouters() {
+  fetch('/api/routers')
+    .then(r => r.json())
+    .then(list => {
+      const tbody = document.getElementById('routers-tbody');
+      if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="txt-muted txt-center">Aucun routeur</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map(r => `
+        <tr>
+          <td><b>${esc(r.name)}</b></td>
+          <td class="txt-mono">${esc(r.ip)}</td>
+          <td>${r.snmp_version === 3
+            ? '<span class="badge badge--up">SNMPv3</span>'
+            : `<span class="txt-mono">${esc(r.snmp_community)}</span>`}</td>
+          <td>${r.snmp_port}</td>
+          <td>${r.poll_interval}s</td>
+          <td>${r.retention_days}j</td>
+          <td>${r.enabled
+            ? '<span class="badge badge--up"><span class="dot dot--up"></span> Actif</span>'
+            : '<span class="badge badge--down"><span class="dot dot--down"></span> Inactif</span>'}</td>
+          <td class="actions-cell">
+            <button class="btn-icon" title="Forcer un poll" onclick="pollRouter(${r.id})">
+              <i class="fa-solid fa-rotate"></i>
+            </button>
+            <button class="btn-icon" title="Modifier" onclick="openEdit(${r.id})">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button class="btn-icon btn-icon--danger" title="Supprimer" onclick="deleteRouter(${r.id},'${esc(r.name)}')">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        </tr>`).join('');
+    });
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Modal routeur ──────────────────────────────────────────────────────────────
+function openModal(title) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-error').style.display = 'none';
+  document.getElementById('modal-overlay').classList.add('active');
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('active');
+}
+
+function openAdd() {
+  document.getElementById('r-id').value           = '';
+  document.getElementById('r-name').value         = '';
+  document.getElementById('r-ip').value           = '';
+  document.getElementById('r-version').value      = '3';
+  document.getElementById('r-community').value    = 'public';
+  document.getElementById('r-port').value         = '161';
+  document.getElementById('r-v3-username').value  = '';
+  document.getElementById('r-v3-level').value     = 'authPriv';
+  document.getElementById('r-v3-auth-proto').value= 'SHA';
+  document.getElementById('r-v3-auth-pass').value = '';
+  document.getElementById('r-v3-priv-proto').value= 'AES';
+  document.getElementById('r-v3-priv-pass').value = '';
+  document.getElementById('r-poll').value         = '60';
+  document.getElementById('r-retention').value    = '30';
+  document.getElementById('r-enabled').checked    = true;
+  onVersionChange(); onLevelChange();
+  openModal('Ajouter un routeur');
+}
+
+function openEdit(id) {
+  fetch('/api/routers/' + id)
+    .then(r => r.json())
+    .then(r => {
+      document.getElementById('r-id').value           = r.id;
+      document.getElementById('r-name').value         = r.name;
+      document.getElementById('r-ip').value           = r.ip;
+      document.getElementById('r-version').value      = String(r.snmp_version ?? 2);
+      document.getElementById('r-community').value    = r.snmp_community;
+      document.getElementById('r-port').value         = r.snmp_port;
+      document.getElementById('r-v3-username').value  = r.snmp_v3_username  ?? '';
+      document.getElementById('r-v3-level').value     = r.snmp_v3_security_level ?? 'authPriv';
+      document.getElementById('r-v3-auth-proto').value= r.snmp_v3_auth_protocol  ?? 'SHA';
+      document.getElementById('r-v3-auth-pass').value = '';   // on ne réaffiche pas le mdp
+      document.getElementById('r-v3-priv-proto').value= r.snmp_v3_priv_protocol  ?? 'AES';
+      document.getElementById('r-v3-priv-pass').value = '';
+      document.getElementById('r-poll').value         = r.poll_interval;
+      document.getElementById('r-retention').value    = r.retention_days;
+      document.getElementById('r-enabled').checked    = r.enabled;
+      onVersionChange(); onLevelChange();
+      openModal('Modifier — ' + r.name);
+    });
+}
+
+function saveRouter() {
+  const id  = document.getElementById('r-id').value;
+  const ver = parseInt(document.getElementById('r-version').value);
+  const lvl = document.getElementById('r-v3-level').value;
+  const body = {
+    name:           document.getElementById('r-name').value.trim(),
+    ip:             document.getElementById('r-ip').value.trim(),
+    snmp_version:   ver,
+    snmp_community: document.getElementById('r-community').value.trim(),
+    snmp_port:      parseInt(document.getElementById('r-port').value),
+    poll_interval:  parseInt(document.getElementById('r-poll').value),
+    retention_days: parseInt(document.getElementById('r-retention').value),
+    enabled:        document.getElementById('r-enabled').checked,
+    snmp_v3_username:      document.getElementById('r-v3-username').value.trim(),
+    snmp_v3_security_level:lvl,
+    snmp_v3_auth_protocol: document.getElementById('r-v3-auth-proto').value,
+    snmp_v3_priv_protocol: document.getElementById('r-v3-priv-proto').value,
+  };
+  // N'envoyer les mdp que s'ils sont renseignés
+  const ap = document.getElementById('r-v3-auth-pass').value;
+  const pp = document.getElementById('r-v3-priv-pass').value;
+  if (ap) body.snmp_v3_auth_password = ap;
+  if (pp) body.snmp_v3_priv_password = pp;
+
+  const errEl = document.getElementById('modal-error');
+  if (!body.name || !body.ip) {
+    errEl.textContent = 'Le nom et l\'IP sont requis.'; errEl.style.display = 'flex'; return;
+  }
+  if (ver === 3 && !body.snmp_v3_username) {
+    errEl.textContent = 'Le nom d\'utilisateur SNMPv3 est requis.'; errEl.style.display = 'flex'; return;
+  }
+  if (ver === 3 && lvl !== 'noAuthNoPriv' && !id && !ap) {
+    errEl.textContent = 'Le mot de passe d\'authentification est requis.'; errEl.style.display = 'flex'; return;
+  }
+
+  const url    = id ? '/api/routers/' + id : '/api/routers';
+  const method = id ? 'PUT' : 'POST';
+  fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
+    .then(r => r.ok ? r.json() : r.json().then(d => Promise.reject(d.error)))
+    .then(() => { closeModal(); loadRouters(); })
+    .catch(e  => { errEl.textContent = e; errEl.style.display = 'flex'; });
+}
+
+function deleteRouter(id, name) {
+  if (!confirm(`Supprimer "${name}" ?\nToutes les données historiques seront perdues.`)) return;
+  fetch('/api/routers/' + id, { method: 'DELETE' }).then(() => loadRouters());
+}
+
+function pollRouter(id) {
+  fetch('/api/routers/' + id + '/poll', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => d.ok ? alert('Poll effectué !') : alert('Erreur : ' + d.error));
+}
+
+// ── Onglets tuto ──────────────────────────────────────────────────────────────
+document.querySelectorAll('.tuto-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tuto-tab').forEach(t => t.classList.remove('tuto-tab--active'));
+    tab.classList.add('tuto-tab--active');
+    const target = tab.dataset.tab;
+    document.getElementById('tab-web').style.display = target === 'web' ? '' : 'none';
+    document.getElementById('tab-cli').style.display = target === 'cli' ? '' : 'none';
+  });
+});
+
+// ── Modal tuto ─────────────────────────────────────────────────────────────────
+document.getElementById('btn-tuto').addEventListener('click', () => {
+  document.getElementById('tuto-overlay').classList.add('active');
+});
+document.getElementById('tuto-close').addEventListener('click', () => {
+  document.getElementById('tuto-overlay').classList.remove('active');
+});
+document.getElementById('tuto-done').addEventListener('click', () => {
+  document.getElementById('tuto-overlay').classList.remove('active');
+});
+document.getElementById('tuto-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('tuto-overlay'))
+    document.getElementById('tuto-overlay').classList.remove('active');
+});
+
+// ── Listeners ──────────────────────────────────────────────────────────────────
+document.getElementById('btn-add-router').addEventListener('click', openAdd);
+document.getElementById('modal-close').addEventListener('click', closeModal);
+document.getElementById('modal-cancel').addEventListener('click', closeModal);
+document.getElementById('modal-save').addEventListener('click', saveRouter);
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
+
+loadRouters();
+</script>
+{% endblock %}

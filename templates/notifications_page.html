@@ -1,0 +1,561 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+{% set _cfg = cfg|default({}) %}
+{% set _webhooks = webhooks|default([]) %}
+{% set _tg_bots = tg_bots|default([]) %}
+
+<div class="page-header">
+  <h1 class="page-title"><i class="fa-solid fa-bell-concierge"></i> Notifications</h1>
+  <span class="page-subtitle">Discord · Telegram · Email — configuration et aperçu</span>
+</div>
+
+<!-- ── Aperçu embed Discord ─────────────────────────────────────────────────── -->
+<div class="card mb-4">
+  <div class="card__header">
+    <span><i class="fa-brands fa-discord"></i> Aperçu d'un embed Discord</span>
+    <div style="display:flex;gap:8px">
+      <select class="form-input" id="preview-level" style="width:auto;font-size:.85rem;padding:4px 8px">
+        <option value="info">Info</option>
+        <option value="success" selected>Succès</option>
+        <option value="warning">Alerte</option>
+        <option value="error">Erreur</option>
+      </select>
+    </div>
+  </div>
+  <div class="card__body">
+    <!-- Discord mock UI -->
+    <div style="background:#313338;border-radius:8px;padding:16px 20px;max-width:600px">
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <!-- Avatar -->
+        <div style="width:40px;height:40px;border-radius:50%;background:#5865F2;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px">
+          🤖
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;color:#fff;font-size:.95rem;margin-bottom:2px">
+            HuwaControl
+            <span style="background:#5865F2;color:#fff;font-size:.65rem;border-radius:3px;padding:1px 5px;margin-left:6px;font-weight:600">APP</span>
+          </div>
+          <!-- Embed -->
+          <div id="embed-preview" style="background:#2b2d31;border-radius:4px;padding:12px 16px;margin-top:4px;border-left:4px solid #57F287;max-width:520px">
+            <div id="ep-title" style="font-weight:700;color:#fff;font-size:.95rem;margin-bottom:4px">
+              ✅ Interface UP : GigabitEthernet0/0/0
+            </div>
+            <div id="ep-desc" style="color:#dbdee1;font-size:.88rem;line-height:1.5;margin-bottom:8px">
+              L'interface <strong>GigabitEthernet0/0/0</strong> est revenue en ligne sur <strong>Mon-Routeur</strong>.
+            </div>
+            <div id="ep-fields" style="display:flex;flex-wrap:wrap;gap:16px;margin-top:8px">
+              <div>
+                <div style="color:#fff;font-weight:700;font-size:.82rem">Routeur</div>
+                <div style="color:#dbdee1;font-size:.82rem">Mon-Routeur</div>
+              </div>
+              <div>
+                <div style="color:#fff;font-weight:700;font-size:.82rem">Interface</div>
+                <div style="color:#dbdee1;font-size:.82rem">GigabitEthernet0/0/0</div>
+              </div>
+            </div>
+            <div style="color:#80848e;font-size:.75rem;margin-top:10px;padding-top:8px;border-top:1px solid #3f4147">
+              HuwaControl • Mon-Routeur — Aujourd'hui à {{ "now" | default("07:00") }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Exemples de types de notifications -->
+    <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" style="font-size:.82rem;padding:4px 10px" onclick="previewExample('interface_up')">Interface UP</button>
+      <button class="btn" style="font-size:.82rem;padding:4px 10px" onclick="previewExample('interface_down')">Interface DOWN</button>
+      <button class="btn" style="font-size:.82rem;padding:4px 10px" onclick="previewExample('temp_warn')">Température</button>
+      <button class="btn" style="font-size:.82rem;padding:4px 10px" onclick="previewExample('bandwidth')">Trafic élevé</button>
+      <button class="btn" style="font-size:.82rem;padding:4px 10px" onclick="previewExample('ping_down')">Ping DOWN</button>
+      <button class="btn" style="font-size:.82rem;padding:4px 10px" onclick="previewExample('report')">Rapport journalier</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Rapport journalier ──────────────────────────────────────────────────── -->
+<div class="card mb-4">
+  <div class="card__header">
+    <span><i class="fa-solid fa-calendar-check"></i> Rapport journalier automatique</span>
+    <button class="btn btn--primary" style="font-size:12px;padding:4px 10px" id="btn-force-report">
+      <i class="fa-solid fa-paper-plane"></i> Envoyer maintenant
+    </button>
+  </div>
+  <div class="card__body">
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div class="form-group" style="margin:0;flex:0 0 200px">
+        <label class="form-label">Heure d'envoi (UTC)</label>
+        <input class="form-input" type="number" id="cfg-report-hour" min="0" max="23"
+               value="{{ _cfg.get('report_hour') or 7 }}">
+      </div>
+      <div id="report-msg" style="font-size:.85rem;margin-top:18px"></div>
+      <button class="btn btn--primary" id="btn-save-report-hour" style="margin-top:18px">
+        <i class="fa-solid fa-floppy-disk"></i> Enregistrer
+      </button>
+    </div>
+    <small class="txt-muted">Le rapport inclut : état des interfaces, CPU/RAM, top événements 24h, SLA ping.</small>
+  </div>
+</div>
+
+<!-- ── Discord Webhooks ────────────────────────────────────────────────────── -->
+<div class="card mb-4">
+  <div class="card__header">
+    <span><i class="fa-brands fa-discord"></i> Webhooks Discord</span>
+    <button class="btn btn--primary" style="font-size:12px;padding:4px 10px" id="btn-add-wh">
+      <i class="fa-solid fa-plus"></i> Ajouter
+    </button>
+  </div>
+  <div class="card__body card__body--no-pad">
+    <table class="table">
+      <thead>
+        <tr><th>Nom</th><th>URL</th><th>Actif</th><th>Info</th><th>Warn</th><th>Erreur</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for wh in _webhooks %}
+        <tr>
+          <td>{{ wh.name }}</td>
+          <td class="txt-muted txt-mono" style="font-size:.78rem">
+            <span title="{{ wh.url }}">discord.com/…/{{ wh.url[-8:] }}</span>
+          </td>
+          <td>{% if wh.enabled %}<span class="badge badge--up">Oui</span>{% else %}<span class="badge badge--down">Non</span>{% endif %}</td>
+          <td>{% if wh.on_info %}✓{% else %}—{% endif %}</td>
+          <td>{% if wh.on_warning %}✓{% else %}—{% endif %}</td>
+          <td>{% if wh.on_error %}✓{% else %}—{% endif %}</td>
+          <td style="white-space:nowrap">
+            <button class="btn-icon" onclick="testWh({{ wh.id }}, this)" title="Tester">
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+            <button class="btn-icon" data-wh='{{ wh|tojson }}' onclick="editWhData(this)" title="Modifier">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button class="btn-icon btn-icon--danger" onclick="deleteWh({{ wh.id }},'{{ wh.name }}')" title="Supprimer">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="txt-muted txt-center">Aucun webhook configuré</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Telegram Bots ───────────────────────────────────────────────────────── -->
+<div class="card mb-4">
+  <div class="card__header">
+    <span><i class="fa-brands fa-telegram"></i> Bots Telegram</span>
+    <button class="btn btn--primary" style="font-size:12px;padding:4px 10px" id="btn-add-tg">
+      <i class="fa-solid fa-plus"></i> Ajouter
+    </button>
+  </div>
+  <div class="card__body card__body--no-pad">
+    <table class="table">
+      <thead><tr><th>Nom</th><th>Chat ID</th><th>Actif</th><th>Info</th><th>Warn</th><th>Erreur</th><th></th></tr></thead>
+      <tbody>
+        {% for bot in _tg_bots %}
+        <tr>
+          <td>{{ bot.name }}</td>
+          <td class="txt-mono" style="font-size:.85rem">{{ bot.chat_id }}</td>
+          <td>{% if bot.enabled %}<span class="badge badge--up">Oui</span>{% else %}<span class="badge badge--down">Non</span>{% endif %}</td>
+          <td>{% if bot.on_info %}✓{% else %}—{% endif %}</td>
+          <td>{% if bot.on_warning %}✓{% else %}—{% endif %}</td>
+          <td>{% if bot.on_error %}✓{% else %}—{% endif %}</td>
+          <td style="white-space:nowrap">
+            <button class="btn-icon" onclick="testTg({{ bot.id }}, this)" title="Tester">
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+            <button class="btn-icon" data-bot='{{ bot|tojson }}' onclick="editTgData(this)" title="Modifier">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button class="btn-icon btn-icon--danger" onclick="deleteTg({{ bot.id }},'{{ bot.name }}')" title="Supprimer">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="txt-muted txt-center">Aucun bot Telegram configuré</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Email SMTP ──────────────────────────────────────────────────────────── -->
+<div class="card mb-4">
+  <div class="card__header"><span><i class="fa-solid fa-envelope"></i> Notifications Email (SMTP)</span></div>
+  <div class="card__body">
+    <div class="row-2col">
+      <div class="form-group">
+        <label class="form-label">Serveur SMTP</label>
+        <input class="form-input" type="text" id="smtp-host" placeholder="smtp.gmail.com"
+               value="{{ _cfg.get('smtp_host') or '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Port</label>
+        <input class="form-input" type="number" id="smtp-port" placeholder="587"
+               value="{{ _cfg.get('smtp_port') or 587 }}">
+      </div>
+    </div>
+    <div class="row-2col">
+      <div class="form-group">
+        <label class="form-label">Utilisateur SMTP</label>
+        <input class="form-input" type="text" id="smtp-user" placeholder="user@gmail.com"
+               value="{{ _cfg.get('smtp_user') or '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mot de passe SMTP</label>
+        <input class="form-input" type="password" id="smtp-pass"
+               value="{{ _cfg.get('smtp_pass') or '' }}">
+      </div>
+    </div>
+    <div class="row-2col">
+      <div class="form-group">
+        <label class="form-label">Expéditeur (From)</label>
+        <input class="form-input" type="email" id="smtp-from" placeholder="huwacontrol@domain.com"
+               value="{{ _cfg.get('smtp_from') or '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Destinataires (séparés par virgule)</label>
+        <input class="form-input" type="text" id="smtp-to" placeholder="admin@domain.com"
+               value="{{ _cfg.get('smtp_to') or '' }}">
+      </div>
+    </div>
+    <div id="smtp-msg" style="font-size:.85rem;margin-top:4px"></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn--primary" id="btn-save-smtp">
+        <i class="fa-solid fa-floppy-disk"></i> Enregistrer
+      </button>
+      <button class="btn" id="btn-test-email">
+        <i class="fa-solid fa-paper-plane"></i> Tester
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Discord Webhook ────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="wh-modal">
+  <div class="modal-card" style="max-width:460px">
+    <div class="modal-header">
+      <span id="wh-modal-title">Nouveau webhook</span>
+      <button class="btn-icon" onclick="closeWhModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="wh-id">
+      <div class="form-group">
+        <label class="form-label">Nom</label>
+        <input class="form-input" type="text" id="wh-name" placeholder="ex : Alertes réseau">
+      </div>
+      <div class="form-group">
+        <label class="form-label">URL du webhook Discord</label>
+        <input class="form-input" type="url" id="wh-url" placeholder="https://discord.com/api/webhooks/…">
+      </div>
+      <div class="form-group" style="display:flex;gap:16px;flex-wrap:wrap">
+        <label class="form-check"><input type="checkbox" id="wh-enabled" checked><span>Actif</span></label>
+        <label class="form-check"><input type="checkbox" id="wh-info"    checked><span>Info</span></label>
+        <label class="form-check"><input type="checkbox" id="wh-warning" checked><span>Alerte</span></label>
+        <label class="form-check"><input type="checkbox" id="wh-error"   checked><span>Erreur</span></label>
+      </div>
+      <div id="wh-modal-err" class="alert alert--error" style="display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeWhModal()">Annuler</button>
+      <button class="btn btn--primary" id="btn-save-wh">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Telegram Bot ───────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="tg-modal">
+  <div class="modal-card" style="max-width:460px">
+    <div class="modal-header">
+      <span id="tg-modal-title">Nouveau bot Telegram</span>
+      <button class="btn-icon" onclick="closeTgModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="tg-id">
+      <div class="form-group">
+        <label class="form-label">Nom</label>
+        <input class="form-input" type="text" id="tg-name" placeholder="ex : Alertes réseau">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Bot Token</label>
+        <input class="form-input" type="text" id="tg-token" placeholder="123456:ABC…">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Chat ID</label>
+        <input class="form-input" type="text" id="tg-chat" placeholder="-100123456789">
+        <small class="txt-muted">Utilisez <code>@userinfobot</code> sur Telegram pour trouver votre Chat ID.</small>
+      </div>
+      <div class="form-group" style="display:flex;gap:16px;flex-wrap:wrap">
+        <label class="form-check"><input type="checkbox" id="tg-enabled" checked><span>Actif</span></label>
+        <label class="form-check"><input type="checkbox" id="tg-info"    checked><span>Info</span></label>
+        <label class="form-check"><input type="checkbox" id="tg-warning" checked><span>Alerte</span></label>
+        <label class="form-check"><input type="checkbox" id="tg-error"   checked><span>Erreur</span></label>
+      </div>
+      <div id="tg-modal-err" class="alert alert--error" style="display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeTgModal()">Annuler</button>
+      <button class="btn btn--primary" id="btn-save-tg">Enregistrer</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Aperçu embed ──────────────────────────────────────────────────────────────
+const EMBED_COLORS = {
+  info:    '#5865F2', success: '#57F287',
+  warning: '#FEE75C', error:   '#ED4245',
+};
+const EMBED_ICONS = {
+  info: 'ℹ️', success: '✅', warning: '⚠️', error: '🚨',
+};
+const EXAMPLES = {
+  interface_up: {
+    level: 'success', title: 'Interface UP : GigabitEthernet0/0/0',
+    desc:  "L'interface **GigabitEthernet0/0/0** est revenue en ligne sur **Mon-Routeur**.",
+    fields: [['Routeur','Mon-Routeur'],['Interface','GigabitEthernet0/0/0']],
+  },
+  interface_down: {
+    level: 'warning', title: 'Interface DOWN : GigabitEthernet0/0/1',
+    desc:  "L'interface **GigabitEthernet0/0/1** est passée hors ligne sur **Mon-Routeur**.",
+    fields: [['Routeur','Mon-Routeur'],['Interface','GigabitEthernet0/0/1']],
+  },
+  temp_warn: {
+    level: 'warning', title: 'Température élevée : 67°C',
+    desc:  "🌡️ La température de **Mon-Routeur** est de **67°C** (seuil d'alerte : 60°C).",
+    fields: [['Température','67°C'],['Seuil alerte','60°C']],
+  },
+  bandwidth: {
+    level: 'warning', title: 'Trafic élevé : GigabitEthernet0/0/0 (85%)',
+    desc:  "📈 Utilisation à **85%** sur **GigabitEthernet0/0/0** (IN) — routeur **Mon-Routeur**.",
+    fields: [['Interface','GigabitEthernet0/0/0'],['Direction','IN'],['Utilisation','85%']],
+  },
+  ping_down: {
+    level: 'error', title: 'Hôte injoignable : Passerelle',
+    desc:  "🔴 **Passerelle** (`192.168.1.1`) ne répond plus au ping.",
+    fields: [['Cible','Passerelle']],
+  },
+  report: {
+    level: 'info', title: 'Rapport quotidien — 19/03/2026',
+    desc:  "**Mon-Routeur** — 8/10 interfaces UP\n⚠ 2 alertes, 🚨 0 erreurs\n📡 **Passerelle** — SLA 99.8% • RTT moy 1.4ms",
+    fields: [['Événements 24h','3'],['Routeurs actifs','1']],
+  },
+};
+
+function renderMd(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`(.*?)`/g, '<code style="background:#1e1f22;padding:1px 4px;border-radius:3px">$1</code>')
+    .replace(/\n/g, '<br>');
+}
+
+function updateEmbedPreview(example) {
+  const color  = EMBED_COLORS[example.level] || '#5865F2';
+  const icon   = EMBED_ICONS[example.level]  || 'ℹ️';
+  document.getElementById('embed-preview').style.borderLeftColor = color;
+  document.getElementById('ep-title').textContent = icon + ' ' + example.title;
+  document.getElementById('ep-desc').innerHTML = renderMd(example.desc);
+  document.getElementById('ep-fields').innerHTML = (example.fields || []).map(([k,v]) =>
+    `<div><div style="color:#fff;font-weight:700;font-size:.82rem">${k}</div>
+     <div style="color:#dbdee1;font-size:.82rem">${v}</div></div>`
+  ).join('');
+}
+
+function previewExample(key) {
+  const ex = EXAMPLES[key];
+  if (ex) {
+    document.getElementById('preview-level').value = ex.level;
+    updateEmbedPreview(ex);
+  }
+}
+
+document.getElementById('preview-level').addEventListener('change', e => {
+  const level = e.target.value;
+  // Find an example that matches this level
+  const match = Object.values(EXAMPLES).find(ex => ex.level === level);
+  if (match) updateEmbedPreview(match);
+});
+
+// ── Rapport journalier ────────────────────────────────────────────────────────
+document.getElementById('btn-save-report-hour')?.addEventListener('click', () => {
+  const msg = document.getElementById('report-msg');
+  fetch('/api/settings', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ report_hour: document.getElementById('cfg-report-hour').value })
+  }).then(r => r.json()).then(d => {
+    msg.textContent = d.ok ? '✓ Heure enregistrée.' : '✗ Erreur';
+    msg.style.color = d.ok ? '#00cc55' : '#ff4444';
+  });
+});
+
+document.getElementById('btn-force-report')?.addEventListener('click', () => {
+  const btn  = document.getElementById('btn-force-report');
+  const icon = btn.querySelector('i');
+  btn.disabled = true;
+  icon.className = 'fa-solid fa-spinner fa-spin';
+  fetch('/api/reports/send', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      icon.className = d.ok ? 'fa-solid fa-check' : 'fa-solid fa-xmark';
+      if (!d.ok && d.error) alert('Erreur rapport : ' + d.error);
+      setTimeout(() => { icon.className = 'fa-solid fa-paper-plane'; btn.disabled = false; }, 3000);
+    }).catch(e => {
+      icon.className = 'fa-solid fa-xmark';
+      setTimeout(() => { icon.className = 'fa-solid fa-paper-plane'; btn.disabled = false; }, 3000);
+    });
+});
+
+// ── Discord Webhooks ──────────────────────────────────────────────────────────
+function openWhModal(title) {
+  document.getElementById('wh-modal-title').textContent = title;
+  document.getElementById('wh-modal-err').style.display = 'none';
+  document.getElementById('wh-modal').classList.add('active');
+}
+function closeWhModal() { document.getElementById('wh-modal').classList.remove('active'); }
+function editWhData(btn) {
+  const wh = JSON.parse(btn.dataset.wh);
+  document.getElementById('wh-id').value         = wh.id;
+  document.getElementById('wh-name').value       = wh.name || '';
+  document.getElementById('wh-url').value        = wh.url  || '';
+  document.getElementById('wh-enabled').checked  = !!wh.enabled;
+  document.getElementById('wh-info').checked     = !!wh.on_info;
+  document.getElementById('wh-warning').checked  = !!wh.on_warning;
+  document.getElementById('wh-error').checked    = !!wh.on_error;
+  openWhModal('Modifier le webhook');
+}
+function testWh(id, btn) {
+  const icon = btn.querySelector('i');
+  icon.className = 'fa-solid fa-spinner fa-spin'; btn.disabled = true;
+  fetch('/api/discord/' + id + '/test', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      icon.className = d.ok ? 'fa-solid fa-check' : 'fa-solid fa-xmark';
+      icon.style.color = d.ok ? 'var(--green)' : '#ff4444';
+      if (!d.ok && d.error) alert('Erreur : ' + d.error);
+      setTimeout(() => { icon.className = 'fa-solid fa-paper-plane'; icon.style.color = ''; btn.disabled = false; }, 3000);
+    }).catch(() => { icon.className = 'fa-solid fa-xmark'; icon.style.color = '#ff4444';
+      setTimeout(() => { icon.className = 'fa-solid fa-paper-plane'; icon.style.color = ''; btn.disabled = false; }, 3000); });
+}
+function deleteWh(id, name) {
+  if (!confirm(`Supprimer le webhook "${name}" ?`)) return;
+  fetch('/api/discord/' + id, { method: 'DELETE' }).then(() => location.reload());
+}
+document.getElementById('btn-add-wh')?.addEventListener('click', () => {
+  ['wh-id','wh-name','wh-url'].forEach(id => document.getElementById(id).value = '');
+  ['wh-enabled','wh-info','wh-warning','wh-error'].forEach(id => document.getElementById(id).checked = true);
+  openWhModal('Nouveau webhook Discord');
+});
+document.getElementById('btn-save-wh')?.addEventListener('click', () => {
+  const errEl = document.getElementById('wh-modal-err');
+  const id    = document.getElementById('wh-id').value;
+  const payload = {
+    name:       document.getElementById('wh-name').value.trim() || 'Webhook',
+    url:        document.getElementById('wh-url').value.trim(),
+    enabled:    document.getElementById('wh-enabled').checked,
+    on_info:    document.getElementById('wh-info').checked,
+    on_warning: document.getElementById('wh-warning').checked,
+    on_error:   document.getElementById('wh-error').checked,
+  };
+  if (!payload.url) { errEl.textContent = 'URL requise'; errEl.style.display = 'flex'; return; }
+  fetch(id ? '/api/discord/' + id : '/api/discord',
+    { method: id ? 'PUT' : 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+    .then(r => r.ok ? location.reload() : r.json().then(d => Promise.reject(d.error)))
+    .catch(e => { errEl.textContent = e || 'Erreur'; errEl.style.display = 'flex'; });
+});
+
+// ── Telegram Bots ─────────────────────────────────────────────────────────────
+function openTgModal(title) {
+  document.getElementById('tg-modal-title').textContent = title;
+  document.getElementById('tg-modal-err').style.display = 'none';
+  document.getElementById('tg-modal').classList.add('active');
+}
+function closeTgModal() { document.getElementById('tg-modal').classList.remove('active'); }
+function editTgData(btn) {
+  const bot = JSON.parse(btn.dataset.bot);
+  document.getElementById('tg-id').value      = bot.id;
+  document.getElementById('tg-name').value    = bot.name || '';
+  document.getElementById('tg-token').value   = bot.bot_token || '';
+  document.getElementById('tg-chat').value    = bot.chat_id || '';
+  document.getElementById('tg-enabled').checked = !!bot.enabled;
+  document.getElementById('tg-info').checked    = !!bot.on_info;
+  document.getElementById('tg-warning').checked = !!bot.on_warning;
+  document.getElementById('tg-error').checked   = !!bot.on_error;
+  openTgModal('Modifier le bot Telegram');
+}
+function testTg(id, btn) {
+  const icon = btn.querySelector('i');
+  icon.className = 'fa-solid fa-spinner fa-spin'; btn.disabled = true;
+  fetch('/api/telegram/' + id + '/test', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      icon.className = d.ok ? 'fa-solid fa-check' : 'fa-solid fa-xmark';
+      icon.style.color = d.ok ? 'var(--green)' : '#ff4444';
+      if (!d.ok && d.error) alert('Erreur Telegram : ' + d.error);
+      setTimeout(() => { icon.className = 'fa-solid fa-paper-plane'; icon.style.color = ''; btn.disabled = false; }, 3000);
+    }).catch(() => { icon.className = 'fa-solid fa-xmark'; icon.style.color = '#ff4444';
+      setTimeout(() => { icon.className = 'fa-solid fa-paper-plane'; icon.style.color = ''; btn.disabled = false; }, 3000); });
+}
+function deleteTg(id, name) {
+  if (!confirm(`Supprimer le bot "${name}" ?`)) return;
+  fetch('/api/telegram/' + id, { method: 'DELETE' }).then(() => location.reload());
+}
+document.getElementById('btn-add-tg')?.addEventListener('click', () => {
+  ['tg-id','tg-name','tg-token','tg-chat'].forEach(id => document.getElementById(id).value = '');
+  ['tg-enabled','tg-info','tg-warning','tg-error'].forEach(id => document.getElementById(id).checked = true);
+  openTgModal('Nouveau bot Telegram');
+});
+document.getElementById('btn-save-tg')?.addEventListener('click', () => {
+  const errEl  = document.getElementById('tg-modal-err');
+  const id     = document.getElementById('tg-id').value;
+  const payload = {
+    name:       document.getElementById('tg-name').value.trim() || 'Telegram',
+    bot_token:  document.getElementById('tg-token').value.trim(),
+    chat_id:    document.getElementById('tg-chat').value.trim(),
+    enabled:    document.getElementById('tg-enabled').checked,
+    on_info:    document.getElementById('tg-info').checked,
+    on_warning: document.getElementById('tg-warning').checked,
+    on_error:   document.getElementById('tg-error').checked,
+  };
+  if (!payload.bot_token || !payload.chat_id) { errEl.textContent = 'Token et Chat ID requis'; errEl.style.display = 'flex'; return; }
+  fetch(id ? '/api/telegram/' + id : '/api/telegram',
+    { method: id ? 'PUT' : 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+    .then(r => r.ok ? location.reload() : r.json().then(d => Promise.reject(d.error)))
+    .catch(e => { errEl.textContent = e || 'Erreur'; errEl.style.display = 'flex'; });
+});
+
+// ── Email SMTP ────────────────────────────────────────────────────────────────
+document.getElementById('btn-save-smtp')?.addEventListener('click', () => {
+  const msg = document.getElementById('smtp-msg');
+  fetch('/api/settings', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      smtp_host: document.getElementById('smtp-host').value.trim(),
+      smtp_port: document.getElementById('smtp-port').value,
+      smtp_user: document.getElementById('smtp-user').value.trim(),
+      smtp_pass: document.getElementById('smtp-pass').value,
+      smtp_from: document.getElementById('smtp-from').value.trim(),
+      smtp_to:   document.getElementById('smtp-to').value.trim(),
+    })
+  }).then(r => r.json()).then(d => {
+    msg.textContent = d.ok ? '✓ Configuration SMTP enregistrée.' : '✗ Erreur';
+    msg.style.color = d.ok ? '#00cc55' : '#ff4444';
+  });
+});
+document.getElementById('btn-test-email')?.addEventListener('click', () => {
+  const msg = document.getElementById('smtp-msg');
+  const btn = document.getElementById('btn-test-email');
+  btn.disabled = true; msg.textContent = 'Envoi…'; msg.style.color = '#aaa';
+  fetch('/api/email/test', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      msg.textContent = d.ok ? '✓ Email test envoyé !' : '✗ ' + d.error;
+      msg.style.color = d.ok ? '#00cc55' : '#ff4444';
+    }).finally(() => btn.disabled = false);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,71 @@
+# ════════════════════════════════════════════════════════════════════════
+#  HuwaControl — Compose standalone (Portainer / Dockge / NAS)
+#
+#  Aucun fichier externe requis. Collez ce fichier tel quel.
+#  Accès après démarrage : http://<IP_SERVEUR>:8080
+#
+#  Variables à personnaliser (optionnel) :
+#    POSTGRES_PASSWORD  — mot de passe BDD (défaut : huwacontrol)
+#    SECRET_KEY         — clé de session Flask (auto-dérivée si absent)
+#    HTTP_PORT          — port web (défaut : 8080)
+#    SYSLOG_HOST_PORT   — port UDP syslog du routeur (défaut : 514)
+#    SNMP_TRAP_PORT     — port UDP traps SNMP (défaut : 1162)
+# ════════════════════════════════════════════════════════════════════════
+
+services:
+
+  db:
+    image: postgres:16-alpine
+    container_name: huwacontrol_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       huwacontrol
+      POSTGRES_USER:     huwa
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-huwacontrol}
+    volumes:
+      - huwacontrol_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U huwa -d huwacontrol"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - huwanet
+
+  app:
+    image: ghcr.io/RealVladilena/huwacontrol:latest
+    container_name: huwacontrol_app
+    restart: unless-stopped
+    environment:
+      # ── Base de données ──────────────────────────────────────
+      DB_HOST:           db
+      DB_PORT:           "5432"
+      POSTGRES_DB:       huwacontrol
+      POSTGRES_USER:     huwa
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-huwacontrol}
+      # ── Flask (SECRET_KEY auto-dérivé si non défini) ─────────
+      SECRET_KEY:        ${SECRET_KEY:-}
+      # ── Ports syslog / SNMP (info uniquement) ───────────────
+      SYSLOG_HOST_PORT:  ${SYSLOG_HOST_PORT:-514}
+      SNMP_TRAP_PORT:    ${SNMP_TRAP_PORT:-1162}
+    volumes:
+      - huwacontrol_instance:/app/instance
+    ports:
+      - "${HTTP_PORT:-8080}:5000"
+      - "${SYSLOG_HOST_PORT:-514}:1514/udp"
+      - "${SNMP_TRAP_PORT:-1162}:1162/udp"
+    cap_add:
+      - NET_RAW
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - huwanet
+
+volumes:
+  huwacontrol_db:
+  huwacontrol_instance:
+
+networks:
+  huwanet:
+    driver: bridge

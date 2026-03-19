@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+{% block title %}Interfaces{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title"><i class="fa-solid fa-diagram-project"></i> Interfaces réseau</h1>
+  <span class="page-subtitle">Trafic par interface — graphiques en temps réel</span>
+</div>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <span class="toolbar__label">Période :</span>
+  <div class="btn-group" id="period-group">
+    <button class="btn-period btn-period--active" data-hours="1">1h</button>
+    <button class="btn-period" data-hours="6">6h</button>
+    <button class="btn-period" data-hours="24">24h</button>
+  </div>
+  <div class="btn-group" id="view-group" style="margin-left:12px">
+    <button class="btn-period btn-period--active" data-view="grid" title="Vue grille">
+      <i class="fa-solid fa-table-cells-large"></i>
+    </button>
+    <button class="btn-period" data-view="table" title="Vue tableau + sparklines">
+      <i class="fa-solid fa-table-list"></i>
+    </button>
+  </div>
+  <a href="/api/export/interfaces" class="btn btn--ghost" style="font-size:12px;padding:4px 10px;margin-left:auto">
+    <i class="fa-solid fa-file-csv"></i> CSV
+  </a>
+</div>
+
+<!-- Vue tableau avec sparklines -->
+<div id="iface-table-view" style="display:none" class="card mt-4">
+  <div class="card__body card__body--no-pad" style="overflow-x:auto">
+    <table class="table" style="font-size:.85rem">
+      <thead>
+        <tr>
+          <th>#</th><th>Interface</th><th>Statut</th><th>Vitesse</th>
+          <th>IN bps</th><th>OUT bps</th><th>IN pps</th><th>OUT pps</th>
+          <th>Erreurs</th><th style="min-width:100px">Tendance</th>
+        </tr>
+      </thead>
+      <tbody id="iface-table-tbody">
+        <tr><td colspan="10" class="txt-muted txt-center">Chargement…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Grille des graphiques -->
+<div class="iface-grid" id="iface-grid">
+  {% for iface in ifaces %}
+  <div class="card iface-card" data-if="{{ iface.if_index }}">
+    <div class="card__header">
+      <div class="iface-card__title">
+        <span class="iface-card__name txt-mono" id="ifname-{{ iface.if_index }}">{{ iface.if_name }}</span>
+        <span class="iface-card__idx txt-muted">#{{ iface.if_index }}</span>
+        <button class="btn-icon" style="font-size:10px;opacity:.6"
+                onclick="renameIface({{ iface.if_index }}, '{{ iface.if_name }}')"
+                title="Renommer l'interface">
+          <i class="fa-solid fa-pen-to-square"></i>
+        </button>
+      </div>
+      <div class="iface-card__badges">
+        <span class="badge badge--neutral" id="status-{{ iface.if_index }}">—</span>
+        <span class="badge badge--speed" id="speed-{{ iface.if_index }}">—</span>
+      </div>
+    </div>
+    <div class="card__body">
+      <div class="iface-card__stats">
+        <div class="iface-stat">
+          <span class="iface-stat__label">IN</span>
+          <span class="iface-stat__val txt-green" id="in-bps-{{ iface.if_index }}">—</span>
+        </div>
+        <div class="iface-stat">
+          <span class="iface-stat__label">OUT</span>
+          <span class="iface-stat__val txt-red" id="out-bps-{{ iface.if_index }}">—</span>
+        </div>
+        <div class="iface-stat">
+          <span class="iface-stat__label">IN pps</span>
+          <span class="iface-stat__val txt-muted" id="in-pps-{{ iface.if_index }}">—</span>
+        </div>
+        <div class="iface-stat">
+          <span class="iface-stat__label">OUT pps</span>
+          <span class="iface-stat__val txt-muted" id="out-pps-{{ iface.if_index }}">—</span>
+        </div>
+        <div class="iface-stat">
+          <span class="iface-stat__label">ERR</span>
+          <span class="iface-stat__val txt-warn" id="err-{{ iface.if_index }}">—</span>
+        </div>
+      </div>
+      <div style="position:relative;height:120px">
+        <canvas id="chart-if-{{ iface.if_index }}"></canvas>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="fa-solid fa-plug-circle-xmark"></i>
+    <p>Aucune interface détectée. Vérifiez la configuration SNMP.</p>
+  </div>
+  {% endfor %}
+</div>
+<!-- Modal renommer interface -->
+<div class="modal-overlay" id="rename-modal">
+  <div class="modal-card" style="max-width:400px">
+    <div class="modal-header">
+      <span><i class="fa-solid fa-pen-to-square"></i> Renommer l'interface</span>
+      <button class="btn-icon" onclick="closeRenameModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nom SNMP original</label>
+        <input class="form-input" type="text" id="rename-orig-label" readonly
+               style="opacity:.5;cursor:default">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Alias personnalisé</label>
+        <input class="form-input" type="text" id="rename-alias-input"
+               placeholder="ex : WAN Fibre — laisser vide pour réinitialiser">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeRenameModal()">Annuler</button>
+      <button class="btn btn--primary" id="btn-save-rename">
+        <i class="fa-solid fa-floppy-disk"></i> Enregistrer
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ifaceIds = [{% for i in ifaces %}{{ i.if_index }},{% endfor %}];
+const charts   = {};
+let currentHours = 1;
+
+// Construire les charts
+function fmtBpsTip(ctx) {
+  const v = ctx.parsed.y;
+  if (v >= 1e9) return ctx.dataset.label + ': ' + (v/1e9).toFixed(2) + ' Gbps';
+  if (v >= 1e6) return ctx.dataset.label + ': ' + (v/1e6).toFixed(2) + ' Mbps';
+  if (v >= 1e3) return ctx.dataset.label + ': ' + (v/1e3).toFixed(1) + ' Kbps';
+  return ctx.dataset.label + ': ' + Math.round(v) + ' bps';
+}
+
+// Hide system interfaces (loopback, null)
+function isSystemIface(name) {
+  const n = (name || '').toLowerCase();
+  return n === 'inloopback0' || n === 'null0' || n.startsWith('inloopback');
+}
+document.querySelectorAll('.iface-card').forEach(card => {
+  const name = card.querySelector('.iface-card__name')?.textContent || '';
+  if (isSystemIface(name)) card.style.display = 'none';
+});
+
+ifaceIds.forEach(id => {
+  charts[id] = buildLineChart(
+    'chart-if-' + id,
+    ['IN bps', 'OUT bps'],
+    ['#00cc44', '#cc0000'],
+    ['rgba(0,204,68,0.12)', 'rgba(204,0,0,0.12)'],
+    { yFmt: fmtBpsAxis, tooltipFmt: fmtBpsTip }
+  );
+});
+
+// Charger les données d'une interface
+function loadIface(id, hours) {
+  fetch('/api/interfaces/' + id + '/bps?hours=' + hours)
+    .then(r => r.json())
+    .then(d => {
+      updateChart(charts[id], d.labels, [d.in_bps, d.out_bps]);
+    })
+    .catch(console.error);
+}
+
+// Mise à jour des statuts / débits en temps réel
+function refreshStats() {
+  fetch('/api/interfaces')
+    .then(r => r.json())
+    .then(list => {
+      list.forEach(i => {
+        const statusEl = document.getElementById('status-' + i.if_index);
+        const speedEl  = document.getElementById('speed-'  + i.if_index);
+        const inEl     = document.getElementById('in-bps-'  + i.if_index);
+        const outEl    = document.getElementById('out-bps-' + i.if_index);
+        const errEl    = document.getElementById('err-' + i.if_index);
+
+        if (statusEl) {
+          statusEl.textContent = i.if_status === 1 ? 'UP' : 'DOWN';
+          statusEl.className   = 'badge ' + (i.if_status === 1 ? 'badge--up' : 'badge--down');
+        }
+        if (speedEl)  speedEl.textContent  = i.speed_mbps ? i.speed_mbps + ' Mbps' : '—';
+        if (inEl)     inEl.textContent     = i.in_bps_fmt  || '—';
+        if (outEl)    outEl.textContent    = i.out_bps_fmt || '—';
+        if (errEl)    errEl.textContent    = ((i.in_errors||0) + (i.out_errors||0)) || '0';
+        const inPpsEl  = document.getElementById('in-pps-'  + i.if_index);
+        const outPpsEl = document.getElementById('out-pps-' + i.if_index);
+        if (inPpsEl)  inPpsEl.textContent  = i.in_pps_fmt  || '—';
+        if (outPpsEl) outPpsEl.textContent = i.out_pps_fmt || '—';
+      });
+    })
+    .catch(console.error);
+}
+
+function loadAll(hours) {
+  ifaceIds.forEach(id => loadIface(id, hours));
+  refreshStats();
+}
+
+// Sélecteur de période
+document.querySelectorAll('.btn-period').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.btn-period').forEach(b => b.classList.remove('btn-period--active'));
+    btn.classList.add('btn-period--active');
+    currentHours = parseInt(btn.dataset.hours);
+    loadAll(currentHours);
+  });
+});
+
+// ── Alias interfaces ──────────────────────────────────────────────────────────
+let _aliases = {};
+
+function loadAliases() {
+  fetch('/api/aliases')
+    .then(r => r.json())
+    .then(d => {
+      _aliases = d;
+      Object.entries(d).forEach(([idx, alias]) => {
+        const el = document.getElementById('ifname-' + idx);
+        if (el) {
+          const orig = el.dataset.orig || el.textContent.split(' (')[0];
+          el.dataset.orig = orig;
+          el.textContent  = alias + ' (' + orig + ')';
+        }
+      });
+    });
+}
+
+let _renameIdx  = null;
+let _renameOrig = null;
+
+function renameIface(ifIndex, origName) {
+  _renameIdx  = ifIndex;
+  _renameOrig = origName;
+  document.getElementById('rename-orig-label').textContent = origName;
+  document.getElementById('rename-alias-input').value = _aliases[ifIndex] || '';
+  document.getElementById('rename-modal').classList.add('active');
+  setTimeout(() => document.getElementById('rename-alias-input').focus(), 80);
+}
+
+function closeRenameModal() {
+  document.getElementById('rename-modal').classList.remove('active');
+}
+
+document.getElementById('btn-save-rename')?.addEventListener('click', () => {
+  const alias = document.getElementById('rename-alias-input').value.trim();
+  fetch('/api/aliases', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ if_index: _renameIdx, alias })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      const el = document.getElementById('ifname-' + _renameIdx);
+      if (el) {
+        el.dataset.orig = _renameOrig;
+        if (alias) {
+          _aliases[_renameIdx] = alias;
+          el.textContent = alias + ' (' + _renameOrig + ')';
+        } else {
+          delete _aliases[_renameIdx];
+          el.textContent = _renameOrig;
+        }
+      }
+      closeRenameModal();
+      showToast(alias ? `Alias "${alias}" enregistré` : 'Alias réinitialisé', 'success');
+    } else {
+      showToast('Erreur lors de la sauvegarde', 'error');
+    }
+  })
+  .catch(() => showToast('Erreur réseau', 'error'));
+});
+
+// ── Vue tableau + sparklines ──────────────────────────────────────────────────
+let _viewMode = 'grid';
+let _sparkData = {};  // { if_index: { in_bps: [], out_bps: [] } }
+
+function refreshTableView() {
+  fetch(apiUrl('/api/interfaces'))
+    .then(r => r.json())
+    .then(list => {
+      const visible = list.filter(i => !isSystemIface(i.if_name));
+      const tbody = document.getElementById('iface-table-tbody');
+      tbody.innerHTML = visible.map(i => `
+        <tr>
+          <td class="txt-muted">${i.if_index}</td>
+          <td class="txt-mono" style="font-weight:600">${esc(i.display_name || i.if_name)}</td>
+          <td>${i.if_status === 1
+            ? '<span class="badge badge--up">UP</span>'
+            : '<span class="badge badge--down">DOWN</span>'}</td>
+          <td>${i.speed_mbps ? i.speed_mbps + ' Mbps' : '—'}</td>
+          <td class="txt-green">${i.in_bps_fmt  || '—'}</td>
+          <td class="txt-red">${i.out_bps_fmt   || '—'}</td>
+          <td class="txt-muted" style="font-size:.8rem">${i.in_pps_fmt  || '—'}</td>
+          <td class="txt-muted" style="font-size:.8rem">${i.out_pps_fmt || '—'}</td>
+          <td class="txt-warn">${((i.in_errors||0)+(i.out_errors||0)) || '0'}</td>
+          <td><canvas id="spark-${i.if_index}" width="100" height="28"></canvas></td>
+        </tr>`).join('') || '<tr><td colspan="10" class="txt-muted txt-center">Aucune interface active</td></tr>';
+
+      // Charger les sparklines pour chaque interface visible
+      visible.forEach(i => {
+        if (_sparkData[i.if_index]) {
+          buildSparkline('spark-' + i.if_index, _sparkData[i.if_index].in_bps, _sparkData[i.if_index].out_bps);
+        } else {
+          fetch(apiUrl('/api/interfaces/' + i.if_index + '/bps', { hours: 1 }))
+            .then(r => r.json())
+            .then(d => {
+              _sparkData[i.if_index] = { in_bps: d.in_bps || [], out_bps: d.out_bps || [] };
+              buildSparkline('spark-' + i.if_index, _sparkData[i.if_index].in_bps, _sparkData[i.if_index].out_bps);
+            });
+        }
+      });
+    });
+}
+
+document.querySelectorAll('#view-group .btn-period').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#view-group .btn-period').forEach(b => b.classList.remove('btn-period--active'));
+    btn.classList.add('btn-period--active');
+    _viewMode = btn.dataset.view;
+    document.getElementById('iface-grid').style.display       = _viewMode === 'grid'  ? '' : 'none';
+    document.getElementById('iface-table-view').style.display = _viewMode === 'table' ? '' : 'none';
+    if (_viewMode === 'table') refreshTableView();
+  });
+});
+
+loadAliases();
+loadAll(currentHours);
+setInterval(() => {
+  loadAll(currentHours);
+  if (_viewMode === 'table') { _sparkData = {}; refreshTableView(); }
+}, 60000);
+setInterval(refreshStats, 30000);
+</script>
+{% endblock %}

@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Historique 30j{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title"><i class="fa-solid fa-clock-rotate-left"></i> Historique — 30 jours glissants</h1>
+  <span class="page-subtitle">Données agrégées par heure</span>
+</div>
+
+<div class="toolbar">
+  <span class="toolbar__label">Période :</span>
+  <div class="btn-group">
+    <button class="btn-period btn-period--active" data-days="7">7j</button>
+    <button class="btn-period" data-days="14">14j</button>
+    <button class="btn-period" data-days="30">30j</button>
+  </div>
+</div>
+
+<!-- CPU historique -->
+<div class="card mt-4">
+  <div class="card__header">
+    <span><i class="fa-solid fa-microchip"></i> CPU — Moyenne &amp; Maximum</span>
+  </div>
+  <div class="card__body">
+    <canvas id="chart-hist-cpu" height="180"></canvas>
+  </div>
+</div>
+
+<!-- Mémoire historique -->
+<div class="card mt-4">
+  <div class="card__header">
+    <span><i class="fa-solid fa-memory"></i> Mémoire — Moyenne &amp; Maximum</span>
+  </div>
+  <div class="card__body">
+    <canvas id="chart-hist-mem" height="180"></canvas>
+  </div>
+</div>
+
+<!-- Trafic interfaces historique -->
+<div class="card mt-4">
+  <div class="card__header">
+    <span><i class="fa-solid fa-diagram-project"></i> Trafic interface</span>
+    <select class="select-dark" id="hist-if-select">
+      <option value="">— Sélectionner une interface —</option>
+    </select>
+  </div>
+  <div class="card__body">
+    <canvas id="chart-hist-if" height="180"></canvas>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const chartHistCpu = buildLineChart(
+  'chart-hist-cpu',
+  ['CPU moy %', 'CPU max %'],
+  ['#cc0000', 'rgba(204,0,0,0.5)'],
+  ['rgba(204,0,0,0.12)', 'rgba(204,0,0,0.04)']
+);
+
+const chartHistMem = buildLineChart(
+  'chart-hist-mem',
+  ['Mém moy %', 'Mém max %'],
+  ['#e07000', 'rgba(224,112,0,0.5)'],
+  ['rgba(224,112,0,0.12)', 'rgba(224,112,0,0.04)']
+);
+
+function fmtBpsTip(ctx) {
+  const v = ctx.parsed.y;
+  if (v >= 1e9) return ctx.dataset.label + ': ' + (v/1e9).toFixed(2) + ' Gbps';
+  if (v >= 1e6) return ctx.dataset.label + ': ' + (v/1e6).toFixed(2) + ' Mbps';
+  if (v >= 1e3) return ctx.dataset.label + ': ' + (v/1e3).toFixed(1) + ' Kbps';
+  return ctx.dataset.label + ': ' + Math.round(v) + ' bps';
+}
+
+const chartHistIf = buildLineChart(
+  'chart-hist-if',
+  ['IN moy', 'OUT moy', 'IN max', 'OUT max'],
+  ['#00cc44', '#cc0000', 'rgba(0,204,68,0.4)', 'rgba(204,0,0,0.4)'],
+  ['rgba(0,204,68,0.12)', 'rgba(204,0,0,0.12)', 'transparent', 'transparent'],
+  { yFmt: fmtBpsAxis, tooltipFmt: fmtBpsTip }
+);
+
+let currentDays   = 7;
+let currentIfIndex = null;
+
+function loadHistSys(days) {
+  fetch('/api/history?days=' + days)
+    .then(r => r.json())
+    .then(d => {
+      updateChart(chartHistCpu, d.labels, [d.cpu_avg, d.cpu_max]);
+      updateChart(chartHistMem, d.labels, [d.mem_avg, d.mem_max]);
+    })
+    .catch(console.error);
+}
+
+function loadHistIface(ifIndex, days) {
+  if (!ifIndex) return;
+  fetch('/api/history/iface/' + ifIndex + '?days=' + days)
+    .then(r => r.json())
+    .then(d => {
+      updateChart(chartHistIf, d.labels, [d.in_avg, d.out_avg, d.in_max, d.out_max]);
+    })
+    .catch(console.error);
+}
+
+// Charger la liste des interfaces pour le sélecteur
+fetch('/api/interfaces')
+  .then(r => r.json())
+  .then(list => {
+    const sel = document.getElementById('hist-if-select');
+    list.forEach(i => {
+      const opt = document.createElement('option');
+      opt.value       = i.if_index;
+      opt.textContent = i.if_name || ('Interface ' + i.if_index);
+      sel.appendChild(opt);
+    });
+  });
+
+document.getElementById('hist-if-select').addEventListener('change', e => {
+  currentIfIndex = e.target.value;
+  loadHistIface(currentIfIndex, currentDays);
+});
+
+document.querySelectorAll('.btn-period').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.btn-period').forEach(b => b.classList.remove('btn-period--active'));
+    btn.classList.add('btn-period--active');
+    currentDays = parseInt(btn.dataset.days);
+    loadHistSys(currentDays);
+    if (currentIfIndex) loadHistIface(currentIfIndex, currentDays);
+  });
+});
+
+loadHistSys(currentDays);
+</script>
+{% endblock %}

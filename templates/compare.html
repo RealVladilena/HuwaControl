@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block title %}Comparaison routeurs{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title"><i class="fa-solid fa-code-compare"></i> Comparaison routeurs</h1>
+  <span class="page-subtitle">Métriques côte à côte sur les dernières 24h</span>
+</div>
+
+{% if routers|length < 2 %}
+<div class="empty-state" style="margin-top:3rem">
+  <i class="fa-solid fa-code-compare" style="font-size:3rem;opacity:.3"></i>
+  <p>Il faut au moins 2 routeurs configurés pour utiliser la comparaison.</p>
+  <a href="{{ url_for('routers_page') }}" class="btn btn--primary" style="margin-top:1rem">
+    Gérer les routeurs
+  </a>
+</div>
+{% else %}
+
+<!-- Sélecteurs -->
+<div class="toolbar" style="gap:16px;align-items:center">
+  <div style="display:flex;align-items:center;gap:8px">
+    <label class="form-label" style="margin:0;white-space:nowrap">Routeur A :</label>
+    <select class="form-input" id="sel-router-a" style="width:auto">
+      {% for r in routers %}
+      <option value="{{ r.id }}">{{ r.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <label class="form-label" style="margin:0;white-space:nowrap">Routeur B :</label>
+    <select class="form-input" id="sel-router-b" style="width:auto">
+      {% for r in routers %}
+      <option value="{{ r.id }}" {% if loop.index == 2 %}selected{% endif %}>{{ r.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="btn btn--primary" id="btn-compare">
+    <i class="fa-solid fa-rotate"></i> Comparer
+  </button>
+</div>
+
+<!-- KPI côte à côte -->
+<div id="compare-kpi" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1.5rem">
+  <div id="kpi-a" class="card">
+    <div class="card__body txt-muted txt-center">Sélectionnez et cliquez Comparer</div>
+  </div>
+  <div id="kpi-b" class="card">
+    <div class="card__body txt-muted txt-center">Sélectionnez et cliquez Comparer</div>
+  </div>
+</div>
+
+<!-- Graphiques CPU/RAM côte à côte -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem">
+  <div class="card">
+    <div class="card__header"><span id="chart-title-a">Routeur A</span></div>
+    <div class="card__body" style="position:relative;height:200px">
+      <canvas id="chart-compare-a"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card__header"><span id="chart-title-b">Routeur B</span></div>
+    <div class="card__body" style="position:relative;height:200px">
+      <canvas id="chart-compare-b"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Tableau interfaces côte à côte -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem">
+  <div class="card">
+    <div class="card__header"><span>Interfaces — <span id="iface-title-a">A</span></span></div>
+    <div class="card__body card__body--no-pad">
+      <table class="table" style="font-size:.82rem">
+        <thead><tr><th>Interface</th><th>Statut</th><th>IN</th><th>OUT</th></tr></thead>
+        <tbody id="iface-tbody-a">
+          <tr><td colspan="4" class="txt-muted txt-center">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card__header"><span>Interfaces — <span id="iface-title-b">B</span></span></div>
+    <div class="card__body card__body--no-pad">
+      <table class="table" style="font-size:.82rem">
+        <thead><tr><th>Interface</th><th>Statut</th><th>IN</th><th>OUT</th></tr></thead>
+        <tbody id="iface-tbody-b">
+          <tr><td colspan="4" class="txt-muted txt-center">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if routers|length >= 2 %}
+<script>
+let _chartA = null;
+let _chartB = null;
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function kpiCard(sys) {
+  if (!sys) return '<div class="card__body txt-muted txt-center">Données non disponibles</div>';
+  const cpu  = sys.cpu_usage  != null ? sys.cpu_usage.toFixed(1)  + '%'  : '—';
+  const mem  = sys.mem_usage  != null ? sys.mem_usage.toFixed(1)  + '%'  : '—';
+  const temp = sys.temperature != null ? sys.temperature.toFixed(0) + '°C' : '—';
+  const uptime = sys.uptime_s
+    ? (() => { const d=Math.floor(sys.uptime_s/86400); const h=Math.floor((sys.uptime_s%86400)/3600); return `${d}j ${h}h`; })()
+    : '—';
+  return `
+    <div class="card__body" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="kpi-mini"><div class="kpi-mini__val">${cpu}</div><div class="kpi-mini__lbl">CPU</div></div>
+      <div class="kpi-mini"><div class="kpi-mini__val">${mem}</div><div class="kpi-mini__lbl">RAM</div></div>
+      <div class="kpi-mini"><div class="kpi-mini__val">${temp}</div><div class="kpi-mini__lbl">Temp.</div></div>
+      <div class="kpi-mini"><div class="kpi-mini__val">${uptime}</div><div class="kpi-mini__lbl">Uptime</div></div>
+    </div>`;
+}
+
+function ifaceRows(ifaces) {
+  const filtered = (ifaces || []).filter(i => {
+    const n = (i.if_name||'').toLowerCase();
+    return n !== 'inloopback0' && n !== 'null0' && !n.startsWith('inloopback');
+  });
+  if (!filtered.length) return '<tr><td colspan="4" class="txt-muted txt-center">Aucune interface</td></tr>';
+  return filtered.map(i => `<tr>
+    <td class="txt-mono" style="font-size:.8rem">${esc(i.if_name)}</td>
+    <td>${i.if_status===1
+      ? '<span class="badge badge--up">UP</span>'
+      : '<span class="badge badge--down">DOWN</span>'}</td>
+    <td class="txt-green" style="font-size:.8rem">${i.in_bps_fmt||'—'}</td>
+    <td class="txt-red"   style="font-size:.8rem">${i.out_bps_fmt||'—'}</td>
+  </tr>`).join('');
+}
+
+function buildCompareChart(canvasId, labels, cpuData, memData, existingChart) {
+  if (existingChart) existingChart.destroy();
+  const ctx = document.getElementById(canvasId)?.getContext('2d');
+  if (!ctx) return null;
+  return new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'CPU %',
+          data: cpuData,
+          borderColor: '#4488cc',
+          backgroundColor: 'rgba(68,136,204,0.10)',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.3,
+          fill: true,
+        },
+        {
+          label: 'RAM %',
+          data: memData,
+          borderColor: '#cc8844',
+          backgroundColor: 'rgba(204,136,68,0.10)',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.3,
+          fill: true,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: { legend: { labels: { color: '#888', font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: '#666', maxTicksLimit: 8, font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.04)' } },
+        y: { min: 0, max: 100, ticks: { color: '#666', font: { size: 10 }, callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,.06)' } },
+      },
+    },
+  });
+}
+
+async function doCompare() {
+  const ridA = document.getElementById('sel-router-a').value;
+  const ridB = document.getElementById('sel-router-b').value;
+
+  // Fetch both routers in parallel
+  const [sysA, sysB, ifA, ifB, histA, histB] = await Promise.allSettled([
+    fetch(`/api/system?router_id=${ridA}`).then(r=>r.json()),
+    fetch(`/api/system?router_id=${ridB}`).then(r=>r.json()),
+    fetch(`/api/interfaces?router_id=${ridA}`).then(r=>r.json()),
+    fetch(`/api/interfaces?router_id=${ridB}`).then(r=>r.json()),
+    fetch(`/api/history?days=1&router_id=${ridA}`).then(r=>r.json()),
+    fetch(`/api/history?days=1&router_id=${ridB}`).then(r=>r.json()),
+  ]);
+
+  const nameA = document.getElementById('sel-router-a').options[document.getElementById('sel-router-a').selectedIndex].text;
+  const nameB = document.getElementById('sel-router-b').options[document.getElementById('sel-router-b').selectedIndex].text;
+
+  // KPI
+  const kpiA = document.getElementById('kpi-a');
+  const kpiB = document.getElementById('kpi-b');
+  kpiA.innerHTML = `<div class="card__header"><span><i class="fa-solid fa-router"></i> ${esc(nameA)}</span></div>` + kpiCard(sysA.value);
+  kpiB.innerHTML = `<div class="card__header"><span><i class="fa-solid fa-router"></i> ${esc(nameB)}</span></div>` + kpiCard(sysB.value);
+
+  // Chart titles
+  document.getElementById('chart-title-a').textContent = nameA;
+  document.getElementById('chart-title-b').textContent = nameB;
+
+  // Charts
+  const ha = histA.value || [];
+  const hb = histB.value || [];
+  _chartA = buildCompareChart('chart-compare-a',
+    ha.map(r=>r.date||r.ts||''), ha.map(r=>r.cpu_avg), ha.map(r=>r.mem_avg), _chartA);
+  _chartB = buildCompareChart('chart-compare-b',
+    hb.map(r=>r.date||r.ts||''), hb.map(r=>r.cpu_avg), hb.map(r=>r.mem_avg), _chartB);
+
+  // Interface tables
+  document.getElementById('iface-title-a').textContent = nameA;
+  document.getElementById('iface-title-b').textContent = nameB;
+  document.getElementById('iface-tbody-a').innerHTML = ifaceRows(ifA.value);
+  document.getElementById('iface-tbody-b').innerHTML = ifaceRows(ifB.value);
+}
+
+document.getElementById('btn-compare').addEventListener('click', doCompare);
+doCompare();
+</script>
+
+<style>
+.kpi-mini { text-align:center; padding:8px; background:rgba(255,255,255,.04); border-radius:6px; }
+.kpi-mini__val { font-size:1.3rem; font-weight:700; color:var(--txt); }
+.kpi-mini__lbl { font-size:.72rem; color:var(--txt-muted); margin-top:2px; }
+</style>
+{% endif %}
+{% endblock %}

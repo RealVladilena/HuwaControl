@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}BGP / OSPF{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title"><i class="fa-solid fa-circle-nodes"></i> BGP / OSPF</h1>
+  <span class="page-subtitle">Voisins de routage dynamique — {{ router.name if router else 'Aucun routeur' }}</span>
+</div>
+
+<!-- Onglets protocoles -->
+<div class="btn-group" id="proto-tabs" style="margin-bottom:1rem">
+  <button class="btn-period btn-period--active" data-proto="bgp">BGP</button>
+  <button class="btn-period" data-proto="ospf">OSPF</button>
+</div>
+
+<!-- BGP -->
+<div id="tab-bgp">
+  <div class="card">
+    <div class="card__header">
+      <span><i class="fa-solid fa-circle-nodes"></i> Voisins BGP</span>
+      <button class="btn btn--ghost" style="font-size:12px;padding:4px 10px" id="btn-refresh-bgp">
+        <i class="fa-solid fa-rotate"></i> Actualiser
+      </button>
+    </div>
+    <div class="card__body card__body--no-pad">
+      <table class="table" style="font-size:.88rem">
+        <thead>
+          <tr>
+            <th>Peer IP</th>
+            <th>État</th>
+            <th>Uptime</th>
+            <th>IN updates</th>
+            <th>OUT updates</th>
+          </tr>
+        </thead>
+        <tbody id="bgp-tbody">
+          <tr><td colspan="5" class="txt-muted txt-center">Chargement…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- OSPF -->
+<div id="tab-ospf" style="display:none">
+  <div class="card">
+    <div class="card__header">
+      <span><i class="fa-solid fa-circle-nodes"></i> Voisins OSPF</span>
+      <button class="btn btn--ghost" style="font-size:12px;padding:4px 10px" id="btn-refresh-ospf">
+        <i class="fa-solid fa-rotate"></i> Actualiser
+      </button>
+    </div>
+    <div class="card__body card__body--no-pad">
+      <table class="table" style="font-size:.88rem">
+        <thead>
+          <tr>
+            <th>Voisin IP</th>
+            <th>Router ID</th>
+            <th>État</th>
+            <th>Événements</th>
+          </tr>
+        </thead>
+        <tbody id="ospf-tbody">
+          <tr><td colspan="4" class="txt-muted txt-center">Chargement…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="alert alert--info" style="margin-top:1rem">
+  <i class="fa-solid fa-circle-info"></i>
+  Les données BGP et OSPF sont collectées en temps réel via SNMP (RFC 1657 / RFC 1850).
+  Si aucun voisin n'apparaît, vérifiez que le protocole est actif et que les OIDs sont accessibles.
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const BGP_STATES = {1:'Idle',2:'Connect',3:'Active',4:'OpenSent',5:'OpenConfirm',6:'Established'};
+const OSPF_STATES = {1:'Down',2:'Attempt',3:'Init',4:'TwoWay',5:'ExStart',6:'Exchange',7:'Loading',8:'Full'};
+
+function fmtUptime(cs) {
+  // centiseconds → HH:MM:SS
+  if (!cs) return '—';
+  const secs = Math.floor(cs / 100);
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  return `${h}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`;
+}
+
+function stateClass(state, states) {
+  const established = state === 6 || state === 8; // BGP Established or OSPF Full
+  return established ? 'badge--up' : (state >= 3 ? 'badge--neutral' : 'badge--down');
+}
+
+function loadBgp() {
+  const tbody = document.getElementById('bgp-tbody');
+  fetch(apiUrl('/api/bgp'))
+    .then(r => r.json())
+    .then(list => {
+      if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="txt-muted txt-center">Aucun voisin BGP détecté</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map(p => {
+        const stateLabel = BGP_STATES[p.state_id] || `État ${p.state_id}`;
+        const cls = p.state_id === 6 ? 'badge--up' : (p.state_id >= 4 ? 'badge--neutral' : 'badge--down');
+        return `<tr>
+          <td class="txt-mono">${esc(p.peer_ip)}</td>
+          <td><span class="badge ${cls}">${esc(stateLabel)}</span></td>
+          <td class="txt-muted">${fmtUptime(p.uptime)}</td>
+          <td class="txt-muted">${p.in_upd ?? '—'}</td>
+          <td class="txt-muted">${p.out_upd ?? '—'}</td>
+        </tr>`;
+      }).join('');
+    })
+    .catch(() => {
+      tbody.innerHTML = '<tr><td colspan="5" class="txt-red txt-center">Erreur SNMP BGP</td></tr>';
+    });
+}
+
+function loadOspf() {
+  const tbody = document.getElementById('ospf-tbody');
+  fetch(apiUrl('/api/ospf'))
+    .then(r => r.json())
+    .then(list => {
+      if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="txt-muted txt-center">Aucun voisin OSPF détecté</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map(n => {
+        const stateLabel = OSPF_STATES[n.state_id] || `État ${n.state_id}`;
+        const cls = n.state_id === 8 ? 'badge--up' : (n.state_id >= 5 ? 'badge--neutral' : 'badge--down');
+        return `<tr>
+          <td class="txt-mono">${esc(n.nbr_ip)}</td>
+          <td class="txt-mono txt-muted">${esc(n.rtr_id || '—')}</td>
+          <td><span class="badge ${cls}">${esc(stateLabel)}</span></td>
+          <td class="txt-muted">${n.events ?? '—'}</td>
+        </tr>`;
+      }).join('');
+    })
+    .catch(() => {
+      tbody.innerHTML = '<tr><td colspan="4" class="txt-red txt-center">Erreur SNMP OSPF</td></tr>';
+    });
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Tab switching
+let _currentProto = 'bgp';
+document.querySelectorAll('#proto-tabs .btn-period').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#proto-tabs .btn-period').forEach(b => b.classList.remove('btn-period--active'));
+    btn.classList.add('btn-period--active');
+    _currentProto = btn.dataset.proto;
+    document.getElementById('tab-bgp').style.display  = _currentProto === 'bgp'  ? '' : 'none';
+    document.getElementById('tab-ospf').style.display = _currentProto === 'ospf' ? '' : 'none';
+    if (_currentProto === 'ospf') loadOspf();
+  });
+});
+
+document.getElementById('btn-refresh-bgp').addEventListener('click', loadBgp);
+document.getElementById('btn-refresh-ospf').addEventListener('click', loadOspf);
+document.addEventListener('routerChanged', () => { loadBgp(); if (_currentProto === 'ospf') loadOspf(); });
+
+loadBgp();
+setInterval(() => {
+  if (_currentProto === 'bgp') loadBgp();
+  else loadOspf();
+}, 60000);
+</script>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Journal d'audit{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title"><i class="fa-solid fa-scroll"></i> Journal d'audit</h1>
+  <span class="page-subtitle">Actions des utilisateurs — connexions, modifications</span>
+</div>
+
+<div class="toolbar" style="gap:12px;flex-wrap:wrap">
+  <input class="form-input" type="search" id="audit-search"
+         placeholder="Rechercher…" style="max-width:260px">
+  <div style="margin-left:auto">
+    <span class="txt-muted" style="font-size:.85rem" id="audit-count"></span>
+  </div>
+</div>
+
+<div class="card mt-4">
+  <div class="card__body card__body--no-pad">
+    <table class="table" id="audit-table">
+      <thead>
+        <tr>
+          <th style="width:160px">Date/Heure</th>
+          <th style="width:140px">Utilisateur</th>
+          <th style="width:160px">Action</th>
+          <th>Détails</th>
+          <th style="width:130px">IP</th>
+        </tr>
+      </thead>
+      <tbody id="audit-tbody">
+        <tr><td colspan="5" class="txt-muted txt-center">Chargement…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allAudit = [];
+
+const ACTION_BADGE = {
+  login:        '<span class="badge badge--up">Connexion</span>',
+  login_failed: '<span class="badge badge--down">Échec login</span>',
+  logout:       '<span class="badge badge--neutral">Déconnexion</span>',
+  event_ack:    '<span class="badge" style="background:rgba(88,101,242,.15);color:#5865F2">Acquittement</span>',
+};
+
+function fmtTs(ts) {
+  const d = new Date(ts * 1000);
+  return d.toLocaleDateString('fr-FR') + ' ' +
+         d.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+function renderAudit(filter) {
+  const tbody = document.getElementById('audit-tbody');
+  let rows = allAudit;
+  if (filter) {
+    const q = filter.toLowerCase();
+    rows = rows.filter(r =>
+      (r.username||'').toLowerCase().includes(q) ||
+      (r.action||'').toLowerCase().includes(q) ||
+      (r.details||'').toLowerCase().includes(q) ||
+      (r.ip||'').includes(q)
+    );
+  }
+  document.getElementById('audit-count').textContent = rows.length + ' entrée(s)';
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="txt-muted txt-center">Aucune entrée</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td class="txt-muted" style="font-size:.82rem;white-space:nowrap">${fmtTs(r.ts)}</td>
+      <td class="txt-mono" style="font-size:.85rem">${r.username||'—'}</td>
+      <td>${ACTION_BADGE[r.action] || '<span class="badge badge--neutral">' + (r.action||'—') + '</span>'}</td>
+      <td class="txt-muted" style="font-size:.85rem">${r.details||''}</td>
+      <td class="txt-mono" style="font-size:.82rem">${r.ip||'—'}</td>
+    </tr>`).join('');
+}
+
+document.getElementById('audit-search').addEventListener('input', e => renderAudit(e.target.value));
+
+fetch('/api/audit?limit=500')
+  .then(r => r.json())
+  .then(d => { allAudit = d; renderAudit(''); })
+  .catch(console.error);
+</script>
+{% endblock %}
