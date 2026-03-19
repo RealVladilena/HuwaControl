@@ -3,6 +3,7 @@ import io
 import logging
 import time
 from datetime import datetime
+from urllib.parse import urlparse
 
 from flask import (Flask, Response, jsonify, redirect, render_template,
                    request, session, url_for, flash)
@@ -161,7 +162,13 @@ def _stop_job(router_id: int) -> None:
 def set_lang(lang: str):
     if lang in _SUPPORTED_LANGS:
         session["lang"] = lang
-    return redirect(request.referrer or url_for("overview"))
+    ref = request.referrer
+    if ref:
+        ref_host = urlparse(ref).netloc
+        own_host = urlparse(request.host_url).netloc
+        if not ref_host or ref_host == own_host:
+            return redirect(ref)
+    return redirect(url_for("overview"))
 
 
 # ─── Hooks ────────────────────────────────────────────────────────────────────
