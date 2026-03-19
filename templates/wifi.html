@@ -5,7 +5,7 @@
 <div class="page-header">
   <h1 class="page-title"><i class="fa-solid fa-wifi"></i> WiFi</h1>
   <button class="btn btn--ghost" id="btn-refresh">
-    <i class="fa-solid fa-rotate"></i> Rafraîchir
+    <i class="fa-solid fa-rotate"></i> {{ _('Rafraîchir') }}
   </button>
 </div>
 
@@ -14,28 +14,28 @@
   <div class="stat-card">
     <div class="stat-card__icon"><i class="fa-solid fa-tower-broadcast"></i></div>
     <div class="stat-card__body">
-      <div class="stat-card__label">Interfaces WiFi</div>
+      <div class="stat-card__label">{{ _('Interfaces WiFi') }}</div>
       <div class="stat-card__val" id="wifi-iface-count">—</div>
     </div>
   </div>
   <div class="stat-card">
     <div class="stat-card__icon"><i class="fa-solid fa-mobile-screen"></i></div>
     <div class="stat-card__body">
-      <div class="stat-card__label">Clients WiFi associés</div>
+      <div class="stat-card__label">{{ _('Clients WiFi associés') }}</div>
       <div class="stat-card__val" id="wifi-client-count">—</div>
     </div>
   </div>
   <div class="stat-card">
     <div class="stat-card__icon" style="color:#00cc44"><i class="fa-solid fa-arrow-up"></i></div>
     <div class="stat-card__body">
-      <div class="stat-card__label">Débit IN total</div>
+      <div class="stat-card__label">{{ _('Débit IN total') }}</div>
       <div class="stat-card__val" id="wifi-total-in" style="font-size:1.3rem">—</div>
     </div>
   </div>
   <div class="stat-card">
     <div class="stat-card__icon" style="color:#cc0000"><i class="fa-solid fa-arrow-down"></i></div>
     <div class="stat-card__body">
-      <div class="stat-card__label">Débit OUT total</div>
+      <div class="stat-card__label">{{ _('Débit OUT total') }}</div>
       <div class="stat-card__val" id="wifi-total-out" style="font-size:1.3rem">—</div>
     </div>
   </div>
@@ -44,15 +44,15 @@
 <!-- Interfaces WiFi -->
 <div class="card" style="margin-bottom:1.5rem">
   <div class="card__header">
-    <span><i class="fa-solid fa-diagram-project"></i> Interfaces radio</span>
+    <span><i class="fa-solid fa-diagram-project"></i> {{ _('Interfaces radio') }}</span>
   </div>
   <div class="card__body card__body--no-pad">
     <table class="table" id="wifi-ifaces-table">
       <thead>
-        <tr><th>Interface</th><th>Statut</th><th>Vitesse</th><th>IN</th><th>OUT</th><th>Erreurs</th></tr>
+        <tr><th>Interface</th><th>{{ _('Statut') }}</th><th>{{ _('Vitesse') }}</th><th>IN</th><th>OUT</th><th>{{ _('Erreurs') }}</th></tr>
       </thead>
       <tbody id="wifi-ifaces-tbody">
-        <tr><td colspan="6" class="txt-muted txt-center">Chargement…</td></tr>
+        <tr><td colspan="6" class="txt-muted txt-center">{{ _('Chargement…') }}</td></tr>
       </tbody>
     </table>
   </div>
@@ -61,16 +61,16 @@
 <!-- Clients WiFi -->
 <div class="card">
   <div class="card__header">
-    <span><i class="fa-solid fa-mobile-screen"></i> Clients WiFi associés</span>
+    <span><i class="fa-solid fa-mobile-screen"></i> {{ _('Clients WiFi associés') }}</span>
     <span class="txt-muted" style="font-size:.8rem">Via Huawei WLAN MIB</span>
   </div>
   <div class="card__body card__body--no-pad">
     <table class="table" id="wifi-clients-table">
       <thead>
-        <tr><th>MAC</th><th>SSID</th><th>Bande</th><th>RSSI</th></tr>
+        <tr><th>MAC</th><th>SSID</th><th>{{ _('Bande') }}</th><th>RSSI</th></tr>
       </thead>
       <tbody id="wifi-clients-tbody">
-        <tr><td colspan="4" class="txt-muted txt-center">Chargement…</td></tr>
+        <tr><td colspan="4" class="txt-muted txt-center">{{ _('Chargement…') }}</td></tr>
       </tbody>
     </table>
   </div>
@@ -90,6 +90,14 @@
 .stat-card__val { font-size:1.6rem; font-weight:700; }
 </style>
 <script>
+const _i18n = {
+  chargement:           "{{ _('Chargement…') }}",
+  aucuneIfaceWifi:      "{{ _('Aucune interface WiFi détectée') }}",
+  aucunClientWifi:      "{{ _('Aucun client WiFi — le routeur supporte peut-être pas le WLAN MIB, consulte la page') }}",
+  aucunClientWifiSuffix:"{{ _('pour la liste ARP.') }}",
+  erreurSnmp:           "{{ _('Erreur SNMP') }}",
+};
+
 function fmtBps(bps) {
   if (bps == null) return '—';
   if (bps >= 1e9) return (bps/1e9).toFixed(2) + ' Gbps';
@@ -128,7 +136,7 @@ function loadWifi() {
 
       const itbody = document.getElementById('wifi-ifaces-tbody');
       if (!ifaces.length) {
-        itbody.innerHTML = '<tr><td colspan="6" class="txt-muted txt-center">Aucune interface WiFi détectée</td></tr>';
+        itbody.innerHTML = `<tr><td colspan="6" class="txt-muted txt-center">${_i18n.aucuneIfaceWifi}</td></tr>`;
       } else {
         itbody.innerHTML = ifaces.map(i => `<tr>
           <td class="txt-mono"><b>${esc(i.if_name)}</b></td>
@@ -144,9 +152,8 @@ function loadWifi() {
 
       const ctbody = document.getElementById('wifi-clients-tbody');
       if (!clients.length) {
-        ctbody.innerHTML = '<tr><td colspan="4" class="txt-muted txt-center">' +
-          'Aucun client WiFi — le routeur supporte peut-être pas le WLAN MIB, ' +
-          'consulte la page <a href="/clients">Clients</a> pour la liste ARP.</td></tr>';
+        ctbody.innerHTML = `<tr><td colspan="4" class="txt-muted txt-center">${_i18n.aucunClientWifi} ` +
+          `<a href="/clients">{{ _('Clients') }}</a> ${_i18n.aucunClientWifiSuffix}</td></tr>`;
       } else {
         ctbody.innerHTML = clients.map(c => `<tr>
           <td class="txt-mono" style="font-size:.85rem">${esc(c.mac)}</td>
@@ -158,7 +165,7 @@ function loadWifi() {
     })
     .catch(() => {
       document.getElementById('wifi-ifaces-tbody').innerHTML =
-        '<tr><td colspan="6" class="txt-red txt-center">Erreur SNMP</td></tr>';
+        `<tr><td colspan="6" class="txt-red txt-center">${_i18n.erreurSnmp}</td></tr>`;
     })
     .finally(() => btn.querySelector('i').classList.remove('fa-spin'));
 }

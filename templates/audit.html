@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Journal d'audit{% endblock %}
+{% block title %}{{ _('Journal d\'audit') }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1 class="page-title"><i class="fa-solid fa-scroll"></i> Journal d'audit</h1>
-  <span class="page-subtitle">Actions des utilisateurs — connexions, modifications</span>
+  <h1 class="page-title"><i class="fa-solid fa-scroll"></i> {{ _('Journal d\'audit') }}</h1>
+  <span class="page-subtitle">{{ _('Actions des utilisateurs — connexions, modifications') }}</span>
 </div>
 
 <div class="toolbar" style="gap:12px;flex-wrap:wrap">
   <input class="form-input" type="search" id="audit-search"
-         placeholder="Rechercher…" style="max-width:260px">
+         placeholder="{{ _('Rechercher…') }}" style="max-width:260px">
   <div style="margin-left:auto">
     <span class="txt-muted" style="font-size:.85rem" id="audit-count"></span>
   </div>
@@ -20,15 +20,15 @@
     <table class="table" id="audit-table">
       <thead>
         <tr>
-          <th style="width:160px">Date/Heure</th>
-          <th style="width:140px">Utilisateur</th>
-          <th style="width:160px">Action</th>
-          <th>Détails</th>
+          <th style="width:160px">{{ _('Date/Heure') }}</th>
+          <th style="width:140px">{{ _('Utilisateur') }}</th>
+          <th style="width:160px">{{ _('Action') }}</th>
+          <th>{{ _('Détails') }}</th>
           <th style="width:130px">IP</th>
         </tr>
       </thead>
       <tbody id="audit-tbody">
-        <tr><td colspan="5" class="txt-muted txt-center">Chargement…</td></tr>
+        <tr><td colspan="5" class="txt-muted txt-center">{{ _('Chargement…') }}</td></tr>
       </tbody>
     </table>
   </div>
@@ -40,10 +40,10 @@
 let allAudit = [];
 
 const ACTION_BADGE = {
-  login:        '<span class="badge badge--up">Connexion</span>',
-  login_failed: '<span class="badge badge--down">Échec login</span>',
-  logout:       '<span class="badge badge--neutral">Déconnexion</span>',
-  event_ack:    '<span class="badge" style="background:rgba(88,101,242,.15);color:#5865F2">Acquittement</span>',
+  login:        `<span class="badge badge--up">{{ _('Connexion') }}</span>`,
+  login_failed: `<span class="badge badge--down">{{ _('Échec login') }}</span>`,
+  logout:       `<span class="badge badge--neutral">{{ _('Déconnexion') }}</span>`,
+  event_ack:    `<span class="badge" style="background:rgba(88,101,242,.15);color:#5865F2">{{ _('Acquittement') }}</span>`,
 };
 
 function fmtTs(ts) {
@@ -66,7 +66,7 @@ function renderAudit(filter) {
   }
   document.getElementById('audit-count').textContent = rows.length + ' entrée(s)';
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="txt-muted txt-center">Aucune entrée</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="txt-muted txt-center">{{ _("Aucune entrée") }}</td></tr>';
     return;
   }
   tbody.innerHTML = rows.map(r => `

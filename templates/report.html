@@ -1,16 +1,16 @@
 {% extends "base.html" %}
-{% block title %}Rapport{% endblock %}
+{% block title %}{{ _('Rapport') }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1 class="page-title"><i class="fa-solid fa-file-lines"></i> Rapport journalier</h1>
+  <h1 class="page-title"><i class="fa-solid fa-file-lines"></i> {{ _('Rapport journalier') }}</h1>
   <div style="display:flex;gap:8px;align-items:center">
     <button class="btn btn--ghost" id="btn-refresh-report">
-      <i class="fa-solid fa-rotate"></i> Actualiser
+      <i class="fa-solid fa-rotate"></i> {{ _('Actualiser') }}
     </button>
     {% if current_user.is_admin %}
     <button class="btn btn--primary" id="btn-send-report">
-      <i class="fa-solid fa-paper-plane"></i> Envoyer maintenant
+      <i class="fa-solid fa-paper-plane"></i> {{ _('Envoyer maintenant') }}
     </button>
     {% endif %}
   </div>
@@ -33,14 +33,14 @@
 
   <div id="report-loading" class="card">
     <div class="card__body txt-muted txt-center">
-      <i class="fa-solid fa-spinner fa-spin"></i> Génération du rapport…
+      <i class="fa-solid fa-spinner fa-spin"></i> {{ _('Génération du rapport…') }}
     </div>
   </div>
 
   <div id="report-error" class="card" style="display:none">
     <div class="card__body txt-red txt-center">
       <i class="fa-solid fa-circle-exclamation"></i>
-      <span id="report-error-msg">Erreur lors de la génération du rapport.</span>
+      <span id="report-error-msg">{{ _('Erreur lors de la génération du rapport.') }}</span>
     </div>
   </div>
 </div>
@@ -48,13 +48,13 @@
 <!-- Historique envois -->
 <div class="card mt-4">
   <div class="card__header">
-    <span><i class="fa-solid fa-clock-rotate-left"></i> Historique des envois</span>
+    <span><i class="fa-solid fa-clock-rotate-left"></i> {{ _('Historique des envois') }}</span>
   </div>
   <div class="card__body">
     <div class="alert alert--info" style="font-size:.85rem">
       <i class="fa-solid fa-circle-info"></i>
-      Le rapport est envoyé automatiquement chaque jour à l'heure configurée dans les paramètres.
-      Vous pouvez aussi déclencher un envoi manuel via le bouton "Envoyer maintenant".
+      {{ _('Le rapport est envoyé automatiquement chaque jour à l\'heure configurée dans les paramètres.') }}
+      {{ _('Vous pouvez aussi déclencher un envoi manuel via le bouton "Envoyer maintenant".') }}
     </div>
   </div>
 </div>

@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}VPN / Tunnels{% endblock %}
+{% block title %}{{ _('VPN / Tunnels') }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1 class="page-title"><i class="fa-solid fa-shield-halved"></i> VPN / Tunnels</h1>
+  <h1 class="page-title"><i class="fa-solid fa-shield-halved"></i> {{ _('VPN / Tunnels') }}</h1>
   <span class="page-subtitle">
     {{ router.name if router else '—' }}{% if router %} — {{ router.ip }}{% endif %}
   </span>
@@ -14,28 +14,28 @@
   <div class="kpi-card">
     <div class="kpi-card__icon" style="background:rgba(0,136,204,.15);color:var(--blue)"><i class="fa-solid fa-shield-halved"></i></div>
     <div class="kpi-card__body">
-      <div class="kpi-card__label">Tunnels UP</div>
+      <div class="kpi-card__label">{{ _('Tunnels UP') }}</div>
       <div class="kpi-card__value txt-green" id="vpn-up">—</div>
     </div>
   </div>
   <div class="kpi-card">
     <div class="kpi-card__icon" style="background:rgba(204,0,0,.15);color:var(--red)"><i class="fa-solid fa-shield-halved"></i></div>
     <div class="kpi-card__body">
-      <div class="kpi-card__label">Tunnels DOWN</div>
+      <div class="kpi-card__label">{{ _('Tunnels DOWN') }}</div>
       <div class="kpi-card__value txt-red" id="vpn-down">—</div>
     </div>
   </div>
   <div class="kpi-card">
     <div class="kpi-card__icon" style="background:rgba(0,204,85,.15);color:var(--green)"><i class="fa-solid fa-arrow-up"></i></div>
     <div class="kpi-card__body">
-      <div class="kpi-card__label">Débit IN total</div>
+      <div class="kpi-card__label">{{ _('Débit IN total') }}</div>
       <div class="kpi-card__value" id="vpn-total-in" style="font-size:1.1rem">—</div>
     </div>
   </div>
   <div class="kpi-card">
     <div class="kpi-card__icon" style="background:rgba(204,0,0,.12);color:#ff4444"><i class="fa-solid fa-arrow-down"></i></div>
     <div class="kpi-card__body">
-      <div class="kpi-card__label">Débit OUT total</div>
+      <div class="kpi-card__label">{{ _('Débit OUT total') }}</div>
       <div class="kpi-card__value" id="vpn-total-out" style="font-size:1.1rem">—</div>
     </div>
   </div>
@@ -51,8 +51,8 @@
 <!-- Tunnel interfaces -->
 <div class="card mt-4">
   <div class="card__header">
-    <span><i class="fa-solid fa-diagram-project"></i> Interfaces tunnel</span>
-    <button class="btn-icon" id="btn-refresh" title="Rafraîchir">
+    <span><i class="fa-solid fa-diagram-project"></i> {{ _('Interfaces tunnel') }}</span>
+    <button class="btn-icon" id="btn-refresh" title="{{ _('Rafraîchir') }}">
       <i class="fa-solid fa-rotate"></i>
     </button>
   </div>
@@ -60,12 +60,12 @@
     <table class="table">
       <thead>
         <tr>
-          <th>Interface</th><th>Statut</th><th>Vitesse</th>
-          <th>IN bps</th><th>OUT bps</th><th>IN pps</th><th>OUT pps</th><th>Erreurs</th>
+          <th>Interface</th><th>{{ _('Statut') }}</th><th>{{ _('Vitesse') }}</th>
+          <th>IN bps</th><th>OUT bps</th><th>IN pps</th><th>OUT pps</th><th>{{ _('Erreurs') }}</th>
         </tr>
       </thead>
       <tbody id="vpn-tunnels-tbody">
-        <tr><td colspan="8" class="txt-muted txt-center">Chargement…</td></tr>
+        <tr><td colspan="8" class="txt-muted txt-center">{{ _('Chargement…') }}</td></tr>
       </tbody>
     </table>
   </div>
@@ -74,16 +74,16 @@
 <!-- IKE SA table -->
 <div class="card mt-4">
   <div class="card__header">
-    <span><i class="fa-solid fa-key"></i> Associations de sécurité IKE</span>
-    <span class="txt-muted" style="font-size:.8rem">Via Huawei Enterprise MIB</span>
+    <span><i class="fa-solid fa-key"></i> {{ _('Associations de sécurité IKE') }}</span>
+    <span class="txt-muted" style="font-size:.8rem">{{ _('Via Huawei Enterprise MIB') }}</span>
   </div>
   <div class="card__body card__body--no-pad">
     <table class="table">
       <thead>
-        <tr><th>Nom / SA</th><th>Adresse distante</th><th>Statut</th></tr>
+        <tr><th>{{ _('Nom / SA') }}</th><th>{{ _('Adresse distante') }}</th><th>{{ _('Statut') }}</th></tr>
       </thead>
       <tbody id="vpn-ike-tbody">
-        <tr><td colspan="3" class="txt-muted txt-center">Chargement…</td></tr>
+        <tr><td colspan="3" class="txt-muted txt-center">{{ _('Chargement…') }}</td></tr>
       </tbody>
     </table>
   </div>
@@ -92,7 +92,7 @@
 <!-- Graphique historique tunnel sélectionné -->
 <div class="card mt-4" id="vpn-chart-card" style="display:none">
   <div class="card__header">
-    <span><i class="fa-solid fa-chart-line"></i> Débit — <span id="vpn-chart-title">—</span></span>
+    <span><i class="fa-solid fa-chart-line"></i> {{ _('Débit') }} — <span id="vpn-chart-title">—</span></span>
     <div class="btn-group" id="vpn-period-group">
       <button class="btn-period btn-period--active" data-h="1">1h</button>
       <button class="btn-period" data-h="6">6h</button>
@@ -148,7 +148,7 @@ function loadVpn() {
       // Tunnel table
       const tbody = document.getElementById('vpn-tunnels-tbody');
       if (!tunnels.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="txt-muted txt-center">Aucune interface tunnel détectée (cherche Tunnel*, GRE*, VPN*, L2TP* dans les noms d\'interfaces)</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="txt-muted txt-center">{{ _("Aucune interface tunnel détectée") }} (Tunnel*, GRE*, VPN*, L2TP*)</td></tr>';
       } else {
         tbody.innerHTML = tunnels.map(t => `
           <tr style="cursor:pointer" onclick="showTunnelChart(${t.if_index},'${esc(t.display_name || t.if_name)}')"
@@ -169,14 +169,14 @@ function loadVpn() {
       // IKE SA table
       const ikeTbody = document.getElementById('vpn-ike-tbody');
       if (!sas.length) {
-        ikeTbody.innerHTML = '<tr><td colspan="3" class="txt-muted txt-center">Aucune SA IKE — le routeur ne supporte peut-être pas le Huawei IKE MIB</td></tr>';
+        ikeTbody.innerHTML = '<tr><td colspan="3" class="txt-muted txt-center">{{ _("Aucune SA IKE — le routeur ne supporte peut-être pas le Huawei IKE MIB") }}</td></tr>';
       } else {
         ikeTbody.innerHTML = sas.map(s => `
           <tr>
             <td class="txt-mono">${esc(s.name || 'SA')}</td>
             <td class="txt-muted">${esc(s.remote || '—')}</td>
             <td>${s.status === 1
-              ? '<span class="badge badge--up">Établi</span>'
+              ? `<span class="badge badge--up">{{ _('Établi') }}</span>`
               : '<span class="badge badge--neutral">—</span>'}</td>
           </tr>`).join('');
       }

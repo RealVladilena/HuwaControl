@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ current_lang }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Installation — HuwaControl</title>
+  <title>{{ _('Installation — HuwaControl') }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
@@ -17,7 +17,7 @@
         <i class="fa-solid fa-network-wired"></i>
         <span>HuwaControl</span>
       </div>
-      <p class="auth-subtitle">Configuration initiale</p>
+      <p class="auth-subtitle">{{ _('Configuration initiale') }}</p>
     </div>
 
     {% if error %}
@@ -29,21 +29,21 @@
       <!-- ── Admin ──────────────────────────────────────────────── -->
       <div class="setup-section">
         <div class="setup-section__title">
-          <i class="fa-solid fa-user-shield"></i> Compte administrateur
+          <i class="fa-solid fa-user-shield"></i> {{ _('Compte administrateur') }}
         </div>
         <div class="form-group">
-          <label class="form-label">Nom d'utilisateur</label>
+          <label class="form-label">{{ _('Nom d\'utilisateur') }}</label>
           <input class="form-input" type="text" name="username"
                  placeholder="admin" required autofocus
                  value="{{ request.form.get('username','') }}">
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Mot de passe <span class="txt-muted">(min. 8 car.)</span></label>
+            <label class="form-label">{{ _('Mot de passe') }} <span class="txt-muted">(min. 8 car.)</span></label>
             <input class="form-input" type="password" name="password" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Confirmation</label>
+            <label class="form-label">{{ _('Confirmation') }}</label>
             <input class="form-input" type="password" name="confirm" required>
           </div>
         </div>
@@ -52,17 +52,17 @@
       <!-- ── Routeur ────────────────────────────────────────────── -->
       <div class="setup-section">
         <div class="setup-section__title">
-          <i class="fa-solid fa-router"></i> Premier routeur
+          <i class="fa-solid fa-router"></i> {{ _('Premier routeur') }}
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Nom</label>
+            <label class="form-label">{{ _('Nom') }}</label>
             <input class="form-input" type="text" name="r_name"
                    placeholder="Huawei AR651W" required
                    value="{{ request.form.get('r_name','') }}">
           </div>
           <div class="form-group">
-            <label class="form-label">Adresse IP</label>
+            <label class="form-label">{{ _('Adresse IP') }}</label>
             <input class="form-input" type="text" name="r_ip"
                    placeholder="192.168.1.1" required
                    value="{{ request.form.get('r_ip','') }}">
@@ -70,15 +70,15 @@
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Version SNMP</label>
+            <label class="form-label">{{ _('Version SNMP') }}</label>
             <select class="form-input" name="r_version" id="setup-version"
                     onchange="setupVersionToggle()">
-              <option value="3" {% if request.form.get('r_version','3')=='3' %}selected{% endif %}>SNMPv3 (recommandé)</option>
-              <option value="2" {% if request.form.get('r_version')=='2' %}selected{% endif %}>SNMPv2c (legacy)</option>
+              <option value="3" {% if request.form.get('r_version','3')=='3' %}selected{% endif %}>{{ _('SNMPv3 (recommandé)') }}</option>
+              <option value="2" {% if request.form.get('r_version')=='2' %}selected{% endif %}>{{ _('SNMPv2c (legacy)') }}</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Port SNMP</label>
+            <label class="form-label">{{ _('Port SNMP') }}</label>
             <input class="form-input" type="number" name="r_port"
                    min="1" max="65535"
                    value="{{ request.form.get('r_port','161') }}">
@@ -88,7 +88,7 @@
         <!-- v2c -->
         <div id="setup-v2">
           <div class="form-group">
-            <label class="form-label">Community SNMP</label>
+            <label class="form-label">{{ _('Community SNMP') }}</label>
             <input class="form-input" type="text" name="r_community"
                    placeholder="public"
                    value="{{ request.form.get('r_community','public') }}">
@@ -98,49 +98,49 @@
         <!-- v3 -->
         <div id="setup-v3" style="display:none">
           <div class="form-group">
-            <label class="form-label">Utilisateur SNMPv3 <span class="txt-red">*</span></label>
+            <label class="form-label">{{ _('Utilisateur SNMPv3') }} <span class="txt-red">*</span></label>
             <input class="form-input" type="text" name="r_v3_username"
                    placeholder="huwamonitor"
                    value="{{ request.form.get('r_v3_username','') }}">
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label">Proto auth</label>
+              <label class="form-label">{{ _('Proto auth') }}</label>
               <select class="form-input" name="r_v3_auth_protocol">
-                <option value="SHA">SHA (recommandé)</option>
+                <option value="SHA">{{ _('SHA (recommandé)') }}</option>
                 <option value="MD5">MD5</option>
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label">Mot de passe auth</label>
+              <label class="form-label">{{ _('Mot de passe auth') }}</label>
               <input class="form-input" type="password" name="r_v3_auth_password"
-                     placeholder="min. 8 caractères">
+                     placeholder="{{ _('min. 8 caractères') }}">
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label">Proto chiffrement</label>
+              <label class="form-label">{{ _('Proto chiffrement') }}</label>
               <select class="form-input" name="r_v3_priv_protocol">
-                <option value="AES">AES128 (recommandé)</option>
+                <option value="AES">{{ _('AES128 (recommandé)') }}</option>
                 <option value="DES">DES</option>
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label">Mot de passe chiffrement</label>
+              <label class="form-label">{{ _('Mot de passe chiffrement') }}</label>
               <input class="form-input" type="password" name="r_v3_priv_password"
-                     placeholder="min. 8 caractères">
+                     placeholder="{{ _('min. 8 caractères') }}">
             </div>
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Intervalle collecte <span class="txt-muted">(s)</span></label>
+            <label class="form-label">{{ _('Intervalle collecte') }} <span class="txt-muted">(s)</span></label>
             <input class="form-input" type="number" name="r_poll"
                    min="10" max="3600"
                    value="{{ request.form.get('r_poll','60') }}">
           </div>
           <div class="form-group">
-            <label class="form-label">Rétention <span class="txt-muted">(jours)</span></label>
+            <label class="form-label">{{ _('Rétention') }} <span class="txt-muted">({{ _('30 jours') }})</span></label>
             <input class="form-input" type="number" name="r_retention"
                    min="1" max="365"
                    value="{{ request.form.get('r_retention','30') }}">
@@ -149,7 +149,7 @@
       </div>
 
       <button class="btn btn--primary btn--full" type="submit">
-        <i class="fa-solid fa-rocket"></i> Démarrer HuwaControl
+        <i class="fa-solid fa-rocket"></i> {{ _('Démarrer HuwaControl') }}
       </button>
 
     </form>

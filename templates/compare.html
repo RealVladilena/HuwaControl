@@ -1,18 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Comparaison routeurs{% endblock %}
+{% block title %}{{ _('Comparaison routeurs') }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1 class="page-title"><i class="fa-solid fa-code-compare"></i> Comparaison routeurs</h1>
-  <span class="page-subtitle">Métriques côte à côte sur les dernières 24h</span>
+  <h1 class="page-title"><i class="fa-solid fa-code-compare"></i> {{ _('Comparaison routeurs') }}</h1>
+  <span class="page-subtitle">{{ _('Métriques côte à côte sur les dernières 24h') }}</span>
 </div>
 
 {% if routers|length < 2 %}
 <div class="empty-state" style="margin-top:3rem">
   <i class="fa-solid fa-code-compare" style="font-size:3rem;opacity:.3"></i>
-  <p>Il faut au moins 2 routeurs configurés pour utiliser la comparaison.</p>
+  <p>{{ _('Il faut au moins 2 routeurs configurés pour utiliser la comparaison.') }}</p>
   <a href="{{ url_for('routers_page') }}" class="btn btn--primary" style="margin-top:1rem">
-    Gérer les routeurs
+    {{ _('Gérer les routeurs') }}
   </a>
 </div>
 {% else %}
@@ -20,7 +20,7 @@
 <!-- Sélecteurs -->
 <div class="toolbar" style="gap:16px;align-items:center">
   <div style="display:flex;align-items:center;gap:8px">
-    <label class="form-label" style="margin:0;white-space:nowrap">Routeur A :</label>
+    <label class="form-label" style="margin:0;white-space:nowrap">{{ _('Routeur A :') }}</label>
     <select class="form-input" id="sel-router-a" style="width:auto">
       {% for r in routers %}
       <option value="{{ r.id }}">{{ r.name }}</option>
@@ -28,7 +28,7 @@
     </select>
   </div>
   <div style="display:flex;align-items:center;gap:8px">
-    <label class="form-label" style="margin:0;white-space:nowrap">Routeur B :</label>
+    <label class="form-label" style="margin:0;white-space:nowrap">{{ _('Routeur B :') }}</label>
     <select class="form-input" id="sel-router-b" style="width:auto">
       {% for r in routers %}
       <option value="{{ r.id }}" {% if loop.index == 2 %}selected{% endif %}>{{ r.name }}</option>
@@ -36,17 +36,17 @@
     </select>
   </div>
   <button class="btn btn--primary" id="btn-compare">
-    <i class="fa-solid fa-rotate"></i> Comparer
+    <i class="fa-solid fa-rotate"></i> {{ _('Comparer') }}
   </button>
 </div>
 
 <!-- KPI côte à côte -->
 <div id="compare-kpi" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1.5rem">
   <div id="kpi-a" class="card">
-    <div class="card__body txt-muted txt-center">Sélectionnez et cliquez Comparer</div>
+    <div class="card__body txt-muted txt-center">{{ _('Sélectionnez et cliquez Comparer') }}</div>
   </div>
   <div id="kpi-b" class="card">
-    <div class="card__body txt-muted txt-center">Sélectionnez et cliquez Comparer</div>
+    <div class="card__body txt-muted txt-center">{{ _('Sélectionnez et cliquez Comparer') }}</div>
   </div>
 </div>
 
@@ -72,7 +72,7 @@
     <div class="card__header"><span>Interfaces — <span id="iface-title-a">A</span></span></div>
     <div class="card__body card__body--no-pad">
       <table class="table" style="font-size:.82rem">
-        <thead><tr><th>Interface</th><th>Statut</th><th>IN</th><th>OUT</th></tr></thead>
+        <thead><tr><th>{{ _('Interface') }}</th><th>{{ _('Statut') }}</th><th>IN</th><th>OUT</th></tr></thead>
         <tbody id="iface-tbody-a">
           <tr><td colspan="4" class="txt-muted txt-center">—</td></tr>
         </tbody>
@@ -83,7 +83,7 @@
     <div class="card__header"><span>Interfaces — <span id="iface-title-b">B</span></span></div>
     <div class="card__body card__body--no-pad">
       <table class="table" style="font-size:.82rem">
-        <thead><tr><th>Interface</th><th>Statut</th><th>IN</th><th>OUT</th></tr></thead>
+        <thead><tr><th>{{ _('Interface') }}</th><th>{{ _('Statut') }}</th><th>IN</th><th>OUT</th></tr></thead>
         <tbody id="iface-tbody-b">
           <tr><td colspan="4" class="txt-muted txt-center">—</td></tr>
         </tbody>

@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Aperçu{% endblock %}
+{% block title %}{{ _('Aperçu') }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1 class="page-title"><i class="fa-solid fa-gauge-high"></i> Aperçu temps réel</h1>
+  <h1 class="page-title"><i class="fa-solid fa-gauge-high"></i> {{ _('Aperçu temps réel') }}</h1>
   <span class="page-subtitle" id="router-subtitle">
     {{ router.name if router else '—' }}{% if router %} — {{ router.ip }}{% endif %}
   </span>
@@ -22,7 +22,7 @@
   <div class="kpi-card">
     <div class="kpi-card__icon kpi-card__icon--mem"><i class="fa-solid fa-memory"></i></div>
     <div class="kpi-card__body">
-      <div class="kpi-card__label">Mémoire</div>
+      <div class="kpi-card__label">{{ _('Mémoire') }}</div>
       <div class="kpi-card__value" id="kpi-mem">—</div>
       <div class="kpi-card__bar"><div class="kpi-card__bar-fill kpi-card__bar-fill--mem" id="bar-mem"></div></div>
     </div>
@@ -30,7 +30,7 @@
   <div class="kpi-card">
     <div class="kpi-card__icon kpi-card__icon--temp"><i class="fa-solid fa-thermometer-half"></i></div>
     <div class="kpi-card__body">
-      <div class="kpi-card__label">Température</div>
+      <div class="kpi-card__label">{{ _('Température') }}</div>
       <div class="kpi-card__value" id="kpi-temp">—</div>
     </div>
   </div>
@@ -44,7 +44,7 @@
   <div class="kpi-card">
     <div class="kpi-card__icon kpi-card__icon--iface"><i class="fa-solid fa-plug"></i></div>
     <div class="kpi-card__body">
-      <div class="kpi-card__label">Interfaces</div>
+      <div class="kpi-card__label">{{ _('Interfaces') }}</div>
       <div class="kpi-card__value">
         <span class="txt-green" id="kpi-if-up">—</span>
         <span class="txt-muted"> / <span id="kpi-if-total">—</span></span>
@@ -55,7 +55,7 @@
   <div class="kpi-card">
     <div class="kpi-card__icon kpi-card__icon--pkt"><i class="fa-solid fa-paper-plane"></i></div>
     <div class="kpi-card__body">
-      <div class="kpi-card__label">Paquets</div>
+      <div class="kpi-card__label">{{ _('Paquets') }}</div>
       <div class="kpi-card__value" id="kpi-pps-in" style="font-size:1.1rem">—</div>
       <div class="kpi-card__sublabel" id="kpi-pps-out">—</div>
     </div>
@@ -68,7 +68,7 @@
   <!-- Carte gauche : WAN ou CPU/RAM -->
   <div class="card">
     <div class="card__header">
-      <span id="chart-header-label"><i class="fa-solid fa-globe"></i> Débit WAN</span>
+      <span id="chart-header-label"><i class="fa-solid fa-globe"></i> {{ _('Débit WAN') }}</span>
       <div style="display:flex;align-items:center;gap:8px">
         <span class="txt-muted" id="wan-iface-hint" style="font-size:.75rem"></span>
         <div class="btn-group" id="chart-mode-group">
@@ -81,7 +81,7 @@
       <!-- WAN chart -->
       <div id="section-wan">
         <div class="chart-label-row">
-          <span id="wan-if-name" class="txt-muted">Interface WAN</span>
+          <span id="wan-if-name" class="txt-muted">{{ _('Interface WAN') }}</span>
           <span id="wan-if-badge" style="font-size:.8rem;color:#fff"></span>
         </div>
         <div style="position:relative;height:150px"><canvas id="chart-wan"></canvas></div>
@@ -94,7 +94,7 @@
         </div>
         <div style="position:relative;height:70px;margin-bottom:10px"><canvas id="chart-cpu"></canvas></div>
         <div class="chart-label-row">
-          <span class="txt-muted"><i class="fa-solid fa-memory" style="color:var(--orange)"></i> Mémoire</span>
+          <span class="txt-muted"><i class="fa-solid fa-memory" style="color:var(--orange)"></i> {{ _('Mémoire') }}</span>
           <span id="mem-current" style="font-size:.8rem;color:#fff"></span>
         </div>
         <div style="position:relative;height:70px"><canvas id="chart-mem"></canvas></div>
@@ -105,7 +105,7 @@
   <!-- Carte droite : Graphique barre alertes -->
   <div class="card">
     <div class="card__header">
-      <span><i class="fa-solid fa-fire" style="color:var(--red)"></i> Alertes</span>
+      <span><i class="fa-solid fa-fire" style="color:var(--red)"></i> {{ _('Alertes') }}</span>
       <div style="display:flex;align-items:center;gap:10px">
         <span class="txt-muted" id="heatmap-total" style="font-size:.8rem"></span>
         <div class="btn-group" id="alert-period-group">
@@ -123,13 +123,13 @@
       <div style="display:flex;gap:14px;margin-top:10px;font-size:.75rem;
                   color:var(--txt-muted);justify-content:center;flex-wrap:wrap">
         <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;
-          background:#3a7bd5;margin-right:4px;vertical-align:middle"></span>1–2 alertes</span>
+          background:#3a7bd5;margin-right:4px;vertical-align:middle"></span>{{ _('1–2 alertes') }}</span>
         <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;
-          background:#d58c00;margin-right:4px;vertical-align:middle"></span>3–5 alertes</span>
+          background:#d58c00;margin-right:4px;vertical-align:middle"></span>{{ _('3–5 alertes') }}</span>
         <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;
-          background:#cc3300;margin-right:4px;vertical-align:middle"></span>6–9 alertes</span>
+          background:#cc3300;margin-right:4px;vertical-align:middle"></span>{{ _('6–9 alertes') }}</span>
         <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;
-          background:#ff1100;box-shadow:0 0 4px #ff1100;margin-right:4px;vertical-align:middle"></span>10+ critique</span>
+          background:#ff1100;box-shadow:0 0 4px #ff1100;margin-right:4px;vertical-align:middle"></span>{{ _('10+ critique') }}</span>
       </div>
     </div>
   </div>
@@ -140,18 +140,18 @@
 <div class="card mt-4">
   <div class="card__header">
     <span>
-      <i class="fa-solid fa-diagram-project"></i> Interfaces actives
+      <i class="fa-solid fa-diagram-project"></i> {{ _('Interfaces actives') }}
       <span class="txt-muted" id="if-hidden-note" style="font-size:.78rem;margin-left:6px"></span>
     </span>
-    <a href="{{ url_for('interfaces') }}" class="card__link">Détail <i class="fa-solid fa-arrow-right"></i></a>
+    <a href="{{ url_for('interfaces') }}" class="card__link">{{ _('Détail') }} <i class="fa-solid fa-arrow-right"></i></a>
   </div>
   <div class="card__body card__body--no-pad">
     <table class="table">
       <thead>
-        <tr><th>#</th><th>Nom</th><th>Statut</th><th>Vitesse</th><th>IN bps</th><th>OUT bps</th><th>IN pps</th><th>OUT pps</th></tr>
+        <tr><th>#</th><th>{{ _('Nom') }}</th><th>{{ _('Statut') }}</th><th>{{ _('Vitesse') }}</th><th>IN bps</th><th>OUT bps</th><th>IN pps</th><th>OUT pps</th></tr>
       </thead>
       <tbody id="iface-tbody">
-        <tr><td colspan="8" class="txt-muted txt-center">Chargement…</td></tr>
+        <tr><td colspan="8" class="txt-muted txt-center">{{ _('Chargement…') }}</td></tr>
       </tbody>
     </table>
   </div>
@@ -160,20 +160,38 @@
 <!-- Tunnels VPN -->
 <div class="card mt-4">
   <div class="card__header">
-    <span><i class="fa-solid fa-shield-halved"></i> Tunnels VPN</span>
+    <span><i class="fa-solid fa-shield-halved"></i> {{ _('Tunnels VPN') }}</span>
     <div style="display:flex;align-items:center;gap:8px">
       <span class="card__badge" id="vpn-count">—</span>
-      <a href="{{ url_for('vpn_page') }}" class="card__link">Détail <i class="fa-solid fa-arrow-right"></i></a>
+      <a href="{{ url_for('vpn_page') }}" class="card__link">{{ _('Détail') }} <i class="fa-solid fa-arrow-right"></i></a>
     </div>
   </div>
   <div id="vpn-body">
-    <p class="txt-muted txt-center" style="padding:14px 16px">Chargement…</p>
+    <p class="txt-muted txt-center" style="padding:14px 16px">{{ _('Chargement…') }}</p>
   </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+const I18N = {
+  debitWan: "{{ _('Débit WAN') }}",
+  cpuMem: "{{ _('CPU / Mémoire') }}",
+  aucunInterface: "{{ _('Aucune interface active') }}",
+  aucunTunnel: "{{ _('Aucun tunnel VPN détecté') }}",
+  aucuneAlerte: "{{ _('Aucune alerte') }}",
+  alerte: "{{ _('alerte') }}",
+  alertes: "{{ _('alertes') }}",
+  masquee: "{{ _('masquée') }}",
+  masquees: "{{ _('masquées') }}",
+  systeme: "{{ _('système') }}",
+  etabli: "{{ _('Établi') }}",
+  critique: "{{ _('Critique') }}",
+  eleve: "{{ _('Élevé') }}",
+  modere: "{{ _('Modéré') }}",
+  faible: "{{ _('Faible') }}",
+};
+
 function setText(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
 function setHtml(id, v) { const el = document.getElementById(id); if (el) el.innerHTML  = v; }
 function setStyle(id, p, v) { const el = document.getElementById(id); if (el) el.style[p] = v; }
@@ -220,8 +238,8 @@ function applyChartMode(mode) {
   document.querySelectorAll('#chart-mode-group .btn-period').forEach(b =>
     b.classList.toggle('btn-period--active', b.dataset.mode === mode));
   const labels = {
-    wan: '<i class="fa-solid fa-globe"></i> Débit WAN',
-    sys: '<i class="fa-solid fa-microchip"></i> CPU / Mémoire'
+    wan: '<i class="fa-solid fa-globe"></i> ' + I18N.debitWan,
+    sys: '<i class="fa-solid fa-microchip"></i> ' + I18N.cpuMem
   };
   setHtml('chart-header-label', labels[mode]);
   if (mode === 'sys') loadSysCharts();
@@ -257,7 +275,7 @@ function loadOverview() {
 
     const noteEl = document.getElementById('if-hidden-note');
     if (noteEl && hidden > 0)
-      noteEl.textContent = `(${hidden} masquée${hidden>1?'s':''} — ${downIfs.length} DOWN, ${sysIfs.length} système)`;
+      noteEl.textContent = `(${hidden} ${hidden>1 ? I18N.masquees : I18N.masquee} — ${downIfs.length} DOWN, ${sysIfs.length} ${I18N.systeme})`;
 
     const tot = [...upIfs, ...downIfs];
     const totalIn  = tot.reduce((s,i) => s + (i.in_pps  || 0), 0);
@@ -282,7 +300,7 @@ function loadOverview() {
         <td class="txt-muted" style="font-size:.85rem">${i.in_pps_fmt  || '—'}</td>
         <td class="txt-muted" style="font-size:.85rem">${i.out_pps_fmt || '—'}</td>
       </tr>`).join('')
-    : '<tr><td colspan="8" class="txt-muted txt-center">Aucune interface active</td></tr>';
+    : `<tr><td colspan="8" class="txt-muted txt-center">${I18N.aucunInterface}</td></tr>`;
 
     // Update WAN interface name hint
     const wan = ifaces.find(i => i.if_index === wanIfIndex);
@@ -323,7 +341,7 @@ function loadVpn() {
     setText('vpn-count', tunnels.length + ikeSas.length);
     const body = document.getElementById('vpn-body');
     if (!tunnels.length && !ikeSas.length) {
-      body.innerHTML = '<p class="txt-muted txt-center" style="padding:12px 16px">Aucun tunnel VPN détecté</p>';
+      body.innerHTML = `<p class="txt-muted txt-center" style="padding:12px 16px">${I18N.aucunTunnel}</p>`;
       return;
     }
     const rows = tunnels.map(t => `
@@ -338,7 +356,7 @@ function loadVpn() {
         <span>${s.status===1?'<span class="dot dot--up"></span>':'<span class="dot dot--unknown"></span>'}</span>
         <span class="vpn-tunnel-name">${esc(s.name||'IKE SA')}</span>
         <span class="vpn-tunnel-meta">${s.remote?'→ '+esc(s.remote):''}</span>
-        <span class="txt-muted" style="font-size:.85rem">${s.status===1?'Établi':'—'}</span>
+        <span class="txt-muted" style="font-size:.85rem">${s.status===1?I18N.etabli:'—'}</span>
         <span></span>
       </div>`));
     body.innerHTML = rows.join('');
@@ -371,7 +389,7 @@ function loadHeatmap(days) {
     .then(data => {
       const total = data.reduce((s, d) => s + (d.count || 0), 0);
       setText('heatmap-total',
-        total ? total + ' alerte' + (total > 1 ? 's' : '') : 'Aucune alerte');
+        total ? total + ' ' + (total > 1 ? I18N.alertes : I18N.alerte) : I18N.aucuneAlerte);
 
       const labels = data.map(d => {
         const dt = new Date(d.day + 'T12:00:00');
@@ -409,9 +427,9 @@ function loadHeatmap(days) {
                 title: (items) => labels[items[0].dataIndex],
                 label: (item) => {
                   const n = item.raw;
-                  if (!n) return 'Aucune alerte';
-                  const lvl = n >= 10 ? 'Critique' : n >= 6 ? 'Élevé' : n >= 3 ? 'Modéré' : 'Faible';
-                  return `${n} alerte${n > 1 ? 's' : ''} — ${lvl}`;
+                  if (!n) return I18N.aucuneAlerte;
+                  const lvl = n >= 10 ? I18N.critique : n >= 6 ? I18N.eleve : n >= 3 ? I18N.modere : I18N.faible;
+                  return `${n} ${n > 1 ? I18N.alertes : I18N.alerte} — ${lvl}`;
                 },
               },
               backgroundColor: '#1a1a1a',

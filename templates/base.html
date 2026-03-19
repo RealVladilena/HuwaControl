@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ current_lang }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -32,7 +32,7 @@
           <select class="router-select" id="routerSelect">
             {% for r in all_routers %}
             <option value="{{ r.id }}" {% if session.get('router_id') == r.id %}selected{% endif %}>
-              {{ r.name }}{% if not r.enabled %} (désactivé){% endif %}
+              {{ r.name }}{% if not r.enabled %} ({{ _('désactivé') }}){% endif %}
             </option>
             {% endfor %}
           </select>
@@ -45,7 +45,7 @@
           <i class="fa-solid fa-microchip"></i>
           <span id="hdr-cpu-val">—</span>
         </div>
-        <div class="topbar__stat" title="Mémoire">
+        <div class="topbar__stat" title="{{ _('Mémoire') }}">
           <i class="fa-solid fa-memory"></i>
           <span id="hdr-mem-val">—</span>
         </div>
@@ -53,13 +53,21 @@
           <span class="dot dot--unknown"></span>
           <span id="conn-label">—</span>
         </div>
-        <button class="btn-icon" id="pollBtn" title="Forcer un poll SNMP">
+        <button class="btn-icon" id="pollBtn" title="{{ _('Forcer un poll SNMP') }}">
           <i class="fa-solid fa-rotate"></i>
         </button>
+
+        <!-- Language switcher -->
+        <div class="topbar__lang">
+          <a href="{{ url_for('set_lang', lang='fr') }}" class="lang-btn{% if current_lang=='fr' %} lang-btn--active{% endif %}">FR</a>
+          <span class="lang-sep">|</span>
+          <a href="{{ url_for('set_lang', lang='en') }}" class="lang-btn{% if current_lang=='en' %} lang-btn--active{% endif %}">EN</a>
+        </div>
+
         <div class="topbar__user">
           <i class="fa-solid fa-user-circle"></i>
           <span>{{ current_user.username }}</span>
-          <a href="{{ url_for('logout') }}" class="topbar__logout" title="Déconnexion">
+          <a href="{{ url_for('logout') }}" class="topbar__logout" title="{{ _('Déconnexion') }}">
             <i class="fa-solid fa-right-from-bracket"></i>
           </a>
         </div>
@@ -75,108 +83,108 @@
     <nav class="sidebar" id="sidebar">
       <ul class="nav">
 
-        <li class="nav__section-label">MONITORING</li>
+        <li class="nav__section-label">{{ _('MONITORING') }}</li>
         <li class="nav__item {% if active_page=='overview' %}nav__item--active{% endif %}">
           <a href="{{ url_for('overview') }}">
-            <i class="fa-solid fa-gauge-high"></i><span>Aperçu</span>
+            <i class="fa-solid fa-gauge-high"></i><span>{{ _('Aperçu') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='interfaces' %}nav__item--active{% endif %}">
           <a href="{{ url_for('interfaces') }}">
-            <i class="fa-solid fa-diagram-project"></i><span>Interfaces</span>
+            <i class="fa-solid fa-diagram-project"></i><span>{{ _('Interfaces') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='wifi' %}nav__item--active{% endif %}">
           <a href="{{ url_for('wifi_page') }}">
-            <i class="fa-solid fa-wifi"></i><span>WiFi</span>
+            <i class="fa-solid fa-wifi"></i><span>{{ _('WiFi') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='clients' %}nav__item--active{% endif %}">
           <a href="{{ url_for('clients_page') }}">
-            <i class="fa-solid fa-users"></i><span>Clients</span>
+            <i class="fa-solid fa-users"></i><span>{{ _('Clients') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='performance' %}nav__item--active{% endif %}">
           <a href="{{ url_for('performance') }}">
-            <i class="fa-solid fa-chart-area"></i><span>Performance</span>
+            <i class="fa-solid fa-chart-area"></i><span>{{ _('Performance') }}</span>
           </a>
         </li>
 
         <li class="nav__item {% if active_page=='events' %}nav__item--active{% endif %}">
           <a href="{{ url_for('events_page') }}">
-            <i class="fa-solid fa-bell"></i><span>Événements</span>
+            <i class="fa-solid fa-bell"></i><span>{{ _('Événements') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='ping' %}nav__item--active{% endif %}">
           <a href="{{ url_for('ping_page') }}">
-            <i class="fa-solid fa-satellite-dish"></i><span>Ping / Latence</span>
+            <i class="fa-solid fa-satellite-dish"></i><span>{{ _('Ping / Latence') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='routing' %}nav__item--active{% endif %}">
           <a href="{{ url_for('routing_table_page') }}">
-            <i class="fa-solid fa-route"></i><span>Table de routage</span>
+            <i class="fa-solid fa-route"></i><span>{{ _('Table de routage') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='vpn' %}nav__item--active{% endif %}">
           <a href="{{ url_for('vpn_page') }}">
-            <i class="fa-solid fa-shield-halved"></i><span>VPN / Tunnels</span>
+            <i class="fa-solid fa-shield-halved"></i><span>{{ _('VPN / Tunnels') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='logs' %}nav__item--active{% endif %}">
           <a href="{{ url_for('logs_page') }}">
-            <i class="fa-solid fa-terminal"></i><span>Logs routeur</span>
+            <i class="fa-solid fa-terminal"></i><span>{{ _('Logs routeur') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='bgp_ospf' %}nav__item--active{% endif %}">
           <a href="{{ url_for('bgp_ospf_page') }}">
-            <i class="fa-solid fa-circle-nodes"></i><span>BGP / OSPF</span>
+            <i class="fa-solid fa-circle-nodes"></i><span>{{ _('BGP / OSPF') }}</span>
           </a>
         </li>
 
-        <li class="nav__section-label">HISTORIQUE</li>
+        <li class="nav__section-label">{{ _('HISTORIQUE') }}</li>
         <li class="nav__item {% if active_page=='history' %}nav__item--active{% endif %}">
           <a href="{{ url_for('history') }}">
-            <i class="fa-solid fa-clock-rotate-left"></i><span>30 jours</span>
+            <i class="fa-solid fa-clock-rotate-left"></i><span>{{ _('30 jours') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='report' %}nav__item--active{% endif %}">
           <a href="{{ url_for('report_page') }}">
-            <i class="fa-solid fa-file-lines"></i><span>Rapport</span>
+            <i class="fa-solid fa-file-lines"></i><span>{{ _('Rapport') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='compare' %}nav__item--active{% endif %}">
           <a href="{{ url_for('compare_page') }}">
-            <i class="fa-solid fa-code-compare"></i><span>Comparaison</span>
+            <i class="fa-solid fa-code-compare"></i><span>{{ _('Comparaison') }}</span>
           </a>
         </li>
 
-        <li class="nav__section-label">ADMINISTRATION</li>
+        <li class="nav__section-label">{{ _('ADMINISTRATION') }}</li>
         <li class="nav__item {% if active_page=='routers' %}nav__item--active{% endif %}">
           <a href="{{ url_for('routers_page') }}">
-            <i class="fa-solid fa-server"></i><span>Routeurs</span>
+            <i class="fa-solid fa-server"></i><span>{{ _('Routeurs') }}</span>
           </a>
         </li>
         {% if current_user.is_admin %}
         <li class="nav__item {% if active_page=='notifications' %}nav__item--active{% endif %}">
           <a href="{{ url_for('notifications_page') }}">
-            <i class="fa-solid fa-bell-concierge"></i><span>Notifications</span>
+            <i class="fa-solid fa-bell-concierge"></i><span>{{ _('Notifications') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='audit' %}nav__item--active{% endif %}">
           <a href="{{ url_for('audit_page') }}">
-            <i class="fa-solid fa-scroll"></i><span>Audit</span>
+            <i class="fa-solid fa-scroll"></i><span>{{ _('Audit') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='settings' %}nav__item--active{% endif %}">
           <a href="{{ url_for('settings') }}">
-            <i class="fa-solid fa-gear"></i><span>Paramètres</span>
+            <i class="fa-solid fa-gear"></i><span>{{ _('Paramètres') }}</span>
           </a>
         </li>
         {% endif %}
 
       </ul>
       <div class="sidebar__footer">
-        <span id="last-poll-time">Aucun poll</span>
+        <span id="last-poll-time">{{ _('Aucun poll') }}</span>
         <div class="sidebar__version">
           <span class="ver-badge">v{{ APP_VERSION }}</span>
           <span>{{ APP_BUILD_DATE }}</span>

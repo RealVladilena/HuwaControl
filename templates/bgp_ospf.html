@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}BGP / OSPF{% endblock %}
+{% block title %}{{ _('BGP / OSPF') }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1 class="page-title"><i class="fa-solid fa-circle-nodes"></i> BGP / OSPF</h1>
-  <span class="page-subtitle">Voisins de routage dynamique — {{ router.name if router else 'Aucun routeur' }}</span>
+  <h1 class="page-title"><i class="fa-solid fa-circle-nodes"></i> {{ _('BGP / OSPF') }}</h1>
+  <span class="page-subtitle">{{ _('Voisins de routage dynamique —') }} {{ router.name if router else _('Aucun routeur') }}</span>
 </div>
 
 <!-- Onglets protocoles -->
@@ -17,9 +17,9 @@
 <div id="tab-bgp">
   <div class="card">
     <div class="card__header">
-      <span><i class="fa-solid fa-circle-nodes"></i> Voisins BGP</span>
+      <span><i class="fa-solid fa-circle-nodes"></i> {{ _('Voisins BGP') }}</span>
       <button class="btn btn--ghost" style="font-size:12px;padding:4px 10px" id="btn-refresh-bgp">
-        <i class="fa-solid fa-rotate"></i> Actualiser
+        <i class="fa-solid fa-rotate"></i> {{ _('Actualiser') }}
       </button>
     </div>
     <div class="card__body card__body--no-pad">
@@ -27,14 +27,14 @@
         <thead>
           <tr>
             <th>Peer IP</th>
-            <th>État</th>
+            <th>{{ _('État') }}</th>
             <th>Uptime</th>
             <th>IN updates</th>
             <th>OUT updates</th>
           </tr>
         </thead>
         <tbody id="bgp-tbody">
-          <tr><td colspan="5" class="txt-muted txt-center">Chargement…</td></tr>
+          <tr><td colspan="5" class="txt-muted txt-center">{{ _('Chargement…') }}</td></tr>
         </tbody>
       </table>
     </div>
@@ -45,23 +45,23 @@
 <div id="tab-ospf" style="display:none">
   <div class="card">
     <div class="card__header">
-      <span><i class="fa-solid fa-circle-nodes"></i> Voisins OSPF</span>
+      <span><i class="fa-solid fa-circle-nodes"></i> {{ _('Voisins OSPF') }}</span>
       <button class="btn btn--ghost" style="font-size:12px;padding:4px 10px" id="btn-refresh-ospf">
-        <i class="fa-solid fa-rotate"></i> Actualiser
+        <i class="fa-solid fa-rotate"></i> {{ _('Actualiser') }}
       </button>
     </div>
     <div class="card__body card__body--no-pad">
       <table class="table" style="font-size:.88rem">
         <thead>
           <tr>
-            <th>Voisin IP</th>
+            <th>{{ _('Voisin IP') }}</th>
             <th>Router ID</th>
-            <th>État</th>
-            <th>Événements</th>
+            <th>{{ _('État') }}</th>
+            <th>{{ _('Événements') }}</th>
           </tr>
         </thead>
         <tbody id="ospf-tbody">
-          <tr><td colspan="4" class="txt-muted txt-center">Chargement…</td></tr>
+          <tr><td colspan="4" class="txt-muted txt-center">{{ _('Chargement…') }}</td></tr>
         </tbody>
       </table>
     </div>
@@ -70,8 +70,8 @@
 
 <div class="alert alert--info" style="margin-top:1rem">
   <i class="fa-solid fa-circle-info"></i>
-  Les données BGP et OSPF sont collectées en temps réel via SNMP (RFC 1657 / RFC 1850).
-  Si aucun voisin n'apparaît, vérifiez que le protocole est actif et que les OIDs sont accessibles.
+  {{ _('Les données BGP et OSPF sont collectées en temps réel via SNMP (RFC 1657 / RFC 1850).') }}
+  {{ _('Si aucun voisin n\'apparaît, vérifiez que le protocole est actif et que les OIDs sont accessibles.') }}
 </div>
 {% endblock %}
 
@@ -101,7 +101,7 @@ function loadBgp() {
     .then(r => r.json())
     .then(list => {
       if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="txt-muted txt-center">Aucun voisin BGP détecté</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="txt-muted txt-center">{{ _("Aucun voisin BGP détecté") }}</td></tr>';
         return;
       }
       tbody.innerHTML = list.map(p => {

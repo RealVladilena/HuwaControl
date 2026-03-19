@@ -1,110 +1,110 @@
 {% extends "base.html" %}
-{% block title %}Paramètres{% endblock %}
+{% block title %}{{ _('Paramètres') }}{% endblock %}
 
 {% block content %}
 {% set _cfg = cfg|default({}) %}
 {% set _ping_targets = ping_targets|default([]) %}
 
 <div class="page-header">
-  <h1 class="page-title"><i class="fa-solid fa-gear"></i> Paramètres</h1>
+  <h1 class="page-title"><i class="fa-solid fa-gear"></i> {{ _('Paramètres') }}</h1>
 </div>
 
 <!-- Seuils d'alerte -->
 {% if current_user.is_admin %}
 <div class="card">
-  <div class="card__header"><span><i class="fa-solid fa-sliders"></i> Seuils d'alerte</span></div>
+  <div class="card__header"><span><i class="fa-solid fa-sliders"></i> {{ _("Seuils d'alerte") }}</span></div>
   <div class="card__body">
     <div class="form-group">
-      <label class="form-label">Température avertissement (°C)</label>
+      <label class="form-label">{{ _('Température avertissement (°C)') }}</label>
       <input class="form-input" type="number" id="cfg-temp-warn" min="30" max="120"
              value="{{ _cfg.get('alert_temp_warn') or 60 }}">
     </div>
     <div class="form-group">
-      <label class="form-label">Température critique (°C)</label>
+      <label class="form-label">{{ _('Température critique (°C)') }}</label>
       <input class="form-input" type="number" id="cfg-temp-crit" min="30" max="120"
              value="{{ _cfg.get('alert_temp_crit') or 80 }}">
     </div>
     <div class="form-group">
-      <label class="form-label">Seuil bande passante global (%)</label>
+      <label class="form-label">{{ _('Seuil bande passante global (%)') }}</label>
       <input class="form-input" type="number" id="cfg-bw-warn" min="10" max="100"
              value="{{ _cfg.get('alert_bw_warn_pct') or 80 }}">
-      <small class="txt-muted">Seuil global — peut être surchargé par interface dans la page Interfaces</small>
+      <small class="txt-muted">{{ _('Seuil global — peut être surchargé par interface dans la page Interfaces') }}</small>
     </div>
     <div class="form-group">
-      <label class="form-label">Heure du rapport quotidien</label>
+      <label class="form-label">{{ _('Heure du rapport quotidien') }}</label>
       <input class="form-input" type="number" id="cfg-report-hour" min="0" max="23"
              value="{{ _cfg.get('report_hour') or 7 }}">
-      <small class="txt-muted">Heure UTC (ex : 7 = 7h00 UTC)</small>
+      <small class="txt-muted">{{ _('Heure UTC (ex : 7 = 7h00 UTC)') }}</small>
     </div>
     <div class="form-group">
-      <label class="form-label">Interface WAN</label>
+      <label class="form-label">{{ _('Interface WAN') }}</label>
       <select class="form-input" id="cfg-wan-if">
         <option value="{{ _cfg.get('wan_if_index') or 8 }}">
-          Chargement… (actuel : #{{ _cfg.get('wan_if_index') or 8 }})
+          {{ _('Chargement…') }} ({{ _('actuel') }} : #{{ _cfg.get('wan_if_index') or 8 }})
         </option>
       </select>
-      <small class="txt-muted">Interface affichée comme WAN sur le dashboard</small>
+      <small class="txt-muted">{{ _('Interface affichée comme WAN sur le dashboard') }}</small>
     </div>
     <div class="form-group">
-      <label class="form-label">Mots-clés syslog critiques</label>
+      <label class="form-label">{{ _('Mots-clés syslog critiques') }}</label>
       <input class="form-input" type="text" id="cfg-syslog-kw"
              value="{{ _cfg.get('syslog_alert_keywords') or 'error,critical,down,fail,denied' }}"
              placeholder="ex : error,critical,down,fail">
-      <small class="txt-muted">Liste séparée par virgules — génère une alerte si trouvé dans un message syslog</small>
+      <small class="txt-muted">{{ _('Liste séparée par virgules — génère une alerte si trouvé dans un message syslog') }}</small>
     </div>
     <div id="cfg-msg" style="font-size:.85rem;margin-top:4px"></div>
     <button class="btn btn--primary mt-4" id="btn-save-cfg">
-      <i class="fa-solid fa-floppy-disk"></i> Enregistrer
+      <i class="fa-solid fa-floppy-disk"></i> {{ _('Enregistrer') }}
     </button>
   </div>
 </div>
 
 <!-- Backup / Restore -->
 <div class="card mt-4">
-  <div class="card__header"><span><i class="fa-solid fa-box-archive"></i> Backup / Restauration</span></div>
+  <div class="card__header"><span><i class="fa-solid fa-box-archive"></i> {{ _('Backup / Restauration') }}</span></div>
   <div class="card__body">
     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
       <a href="/api/backup" class="btn btn--primary">
-        <i class="fa-solid fa-download"></i> Télécharger backup.json
+        <i class="fa-solid fa-download"></i> {{ _('Télécharger backup.json') }}
       </a>
       <div style="display:flex;gap:8px;align-items:center">
         <label class="btn btn--ghost" style="cursor:pointer">
-          <i class="fa-solid fa-upload"></i> Restaurer depuis fichier
+          <i class="fa-solid fa-upload"></i> {{ _('Restaurer depuis fichier') }}
           <input type="file" id="restore-file" accept=".json" style="display:none">
         </label>
-        <button class="btn btn--primary" id="btn-restore">Importer</button>
+        <button class="btn btn--primary" id="btn-restore">{{ _('Importer') }}</button>
       </div>
     </div>
     <div id="restore-msg" style="font-size:.85rem;margin-top:8px"></div>
-    <small class="txt-muted">Le backup contient : paramètres, cibles ping, alias interfaces. Les mots de passe SNMP v3 sont masqués.</small>
+    <small class="txt-muted">{{ _('Le backup contient : paramètres, cibles ping, alias interfaces. Les mots de passe SNMP v3 sont masqués.') }}</small>
   </div>
 </div>
 
 <!-- Cibles Ping -->
 <div class="card mt-4">
   <div class="card__header">
-    <span><i class="fa-solid fa-satellite-dish"></i> Cibles Ping</span>
+    <span><i class="fa-solid fa-satellite-dish"></i> {{ _('Cibles Ping') }}</span>
     <button class="btn btn--primary" style="font-size:12px;padding:4px 10px" id="btn-add-ping">
-      <i class="fa-solid fa-plus"></i> Ajouter
+      <i class="fa-solid fa-plus"></i> {{ _('Ajouter') }}
     </button>
   </div>
   <div class="card__body card__body--no-pad">
     <table class="table">
-      <thead><tr><th>Label</th><th>Hôte</th><th>Actif</th><th></th></tr></thead>
+      <thead><tr><th>Label</th><th>{{ _('Hôte') }}</th><th>{{ _('Actif') }}</th><th></th></tr></thead>
       <tbody>
         {% for t in _ping_targets %}
         <tr>
           <td>{{ t.label }}</td>
           <td class="txt-mono" style="font-size:.85rem">{{ t.host }}</td>
-          <td>{% if t.enabled %}<span class="badge badge--up">Oui</span>{% else %}<span class="badge badge--down">Non</span>{% endif %}</td>
+          <td>{% if t.enabled %}<span class="badge badge--up">{{ _('Oui') }}</span>{% else %}<span class="badge badge--down">{{ _('Non') }}</span>{% endif %}</td>
           <td>
-            <button class="btn-icon btn-icon--danger" onclick="deletePingTarget({{ t.id }},'{{ t.label }}')" title="Supprimer">
+            <button class="btn-icon btn-icon--danger" onclick="deletePingTarget({{ t.id }},'{{ t.label }}')" title="{{ _('Supprimer') }}">
               <i class="fa-solid fa-trash"></i>
             </button>
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="4" class="txt-muted txt-center">Aucune cible ping configurée</td></tr>
+        <tr><td colspan="4" class="txt-muted txt-center">{{ _('Aucune cible ping configurée') }}</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -116,23 +116,23 @@
 <div class="row-2col mt-4">
 
   <div class="card">
-    <div class="card__header"><span><i class="fa-solid fa-key"></i> Changer mon mot de passe</span></div>
+    <div class="card__header"><span><i class="fa-solid fa-key"></i> {{ _('Changer mon mot de passe') }}</span></div>
     <div class="card__body">
       <div class="form-group">
-        <label class="form-label">Mot de passe actuel</label>
+        <label class="form-label">{{ _('Mot de passe actuel') }}</label>
         <input class="form-input" type="password" id="pw-old">
       </div>
       <div class="form-group">
-        <label class="form-label">Nouveau mot de passe</label>
+        <label class="form-label">{{ _('Nouveau mot de passe') }}</label>
         <input class="form-input" type="password" id="pw-new">
       </div>
       <div class="form-group">
-        <label class="form-label">Confirmation</label>
+        <label class="form-label">{{ _('Confirmation') }}</label>
         <input class="form-input" type="password" id="pw-confirm">
       </div>
       <div id="pw-msg" style="font-size:0.85rem;margin-top:4px;"></div>
       <button class="btn btn--primary mt-4" id="btn-pw">
-        <i class="fa-solid fa-floppy-disk"></i> Mettre à jour
+        <i class="fa-solid fa-floppy-disk"></i> {{ _('Mettre à jour') }}
       </button>
     </div>
   </div>
@@ -140,25 +140,25 @@
   {% if current_user.is_admin %}
   <div class="card">
     <div class="card__header">
-      <span><i class="fa-solid fa-users"></i> Comptes</span>
+      <span><i class="fa-solid fa-users"></i> {{ _('Comptes') }}</span>
       <button class="btn btn--primary" style="font-size:12px;padding:4px 10px" id="btn-add-user">
-        <i class="fa-solid fa-plus"></i> Ajouter
+        <i class="fa-solid fa-plus"></i> {{ _('Ajouter') }}
       </button>
     </div>
     <div class="card__body card__body--no-pad">
       <table class="table">
-        <thead><tr><th>Utilisateur</th><th>Rôle</th><th></th></tr></thead>
+        <thead><tr><th>{{ _('Utilisateur') }}</th><th>{{ _('Rôle') }}</th><th></th></tr></thead>
         <tbody>
           {% for u in users %}
           <tr>
             <td>{{ u.username }}</td>
             <td>
               {% if u.is_admin %}<span class="badge badge--up">Admin</span>
-              {% else %}<span class="badge badge--neutral">Lecture</span>{% endif %}
+              {% else %}<span class="badge badge--neutral">{{ _('Lecture') }}</span>{% endif %}
             </td>
             <td style="display:flex;gap:6px;align-items:center">
               {% if not u.is_admin %}
-              <button class="btn-icon" title="Gérer les accès routeurs"
+              <button class="btn-icon" title="{{ _('Gérer les accès routeurs') }}"
                       onclick="openPermsModal({{ u.id }},'{{ u.username }}')">
                 <i class="fa-solid fa-key"></i>
               </button>
@@ -184,7 +184,7 @@
 <div class="modal-overlay" id="ping-modal">
   <div class="modal-card" style="max-width:400px">
     <div class="modal-header">
-      <span>Nouvelle cible ping</span>
+      <span>{{ _('Nouvelle cible ping') }}</span>
       <button class="btn-icon" onclick="closePingModal()"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
@@ -193,14 +193,14 @@
         <input class="form-input" type="text" id="ping-label" placeholder="ex : Passerelle">
       </div>
       <div class="form-group">
-        <label class="form-label">Hôte / IP</label>
+        <label class="form-label">{{ _('Hôte / IP') }}</label>
         <input class="form-input" type="text" id="ping-host" placeholder="ex : 192.168.1.1">
       </div>
       <div id="ping-modal-err" class="alert alert--error" style="display:none"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn" onclick="closePingModal()">Annuler</button>
-      <button class="btn btn--primary" id="btn-save-ping">Ajouter</button>
+      <button class="btn" onclick="closePingModal()">{{ _('Annuler') }}</button>
+      <button class="btn btn--primary" id="btn-save-ping">{{ _('Ajouter') }}</button>
     </div>
   </div>
 </div>
@@ -209,29 +209,29 @@
 <div class="modal-overlay" id="user-modal">
   <div class="modal-card" style="max-width:400px">
     <div class="modal-header">
-      <span>Nouvel utilisateur</span>
+      <span>{{ _('Nouvel utilisateur') }}</span>
       <button class="btn-icon" onclick="closeUserModal()"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
       <div class="form-group">
-        <label class="form-label">Nom d'utilisateur</label>
+        <label class="form-label">{{ _("Nom d'utilisateur") }}</label>
         <input class="form-input" type="text" id="new-username">
       </div>
       <div class="form-group">
-        <label class="form-label">Mot de passe</label>
+        <label class="form-label">{{ _('Mot de passe') }}</label>
         <input class="form-input" type="password" id="new-password">
       </div>
       <div class="form-group">
         <label class="form-check">
           <input type="checkbox" id="new-is-admin">
-          <span>Administrateur</span>
+          <span>{{ _('Administrateur') }}</span>
         </label>
       </div>
       <div id="user-modal-err" class="alert alert--error" style="display:none"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn" onclick="closeUserModal()">Annuler</button>
-      <button class="btn btn--primary" id="btn-save-user">Créer</button>
+      <button class="btn" onclick="closeUserModal()">{{ _('Annuler') }}</button>
+      <button class="btn btn--primary" id="btn-save-user">{{ _('Créer') }}</button>
     </div>
   </div>
 </div>
@@ -240,20 +240,19 @@
 <div class="modal-overlay" id="perms-modal">
   <div class="modal-card" style="max-width:480px">
     <div class="modal-header">
-      <span><i class="fa-solid fa-key"></i> Accès routeurs — <span id="perms-username"></span></span>
+      <span><i class="fa-solid fa-key"></i> {{ _('Accès routeurs') }} — <span id="perms-username"></span></span>
       <button class="btn-icon" onclick="document.getElementById('perms-modal').classList.remove('active')">
         <i class="fa-solid fa-xmark"></i>
       </button>
     </div>
     <div class="modal-body">
       <p class="txt-muted" style="font-size:.83rem;margin-bottom:12px">
-        Si aucun accès n'est coché, l'utilisateur voit tous les routeurs (comportement par défaut).
-        Cocher un routeur restreint l'accès aux routeurs cochés uniquement.
+        {{ _("Si aucun accès n'est coché, l'utilisateur voit tous les routeurs (comportement par défaut). Cocher un routeur restreint l'accès aux routeurs cochés uniquement.") }}
       </p>
       <div id="perms-routers-list"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn" onclick="document.getElementById('perms-modal').classList.remove('active')">Fermer</button>
+      <button class="btn" onclick="document.getElementById('perms-modal').classList.remove('active')">{{ _('Fermer') }}</button>
     </div>
   </div>
 </div>
@@ -283,7 +282,7 @@
       }).join('');
       // If none matched, keep placeholder
       if (!filtered.length) {
-        sel.innerHTML = `<option value="${currentVal}">#${currentVal} (interfaces non chargées)</option>`;
+        sel.innerHTML = `<option value="${currentVal}">#${currentVal} ({{ _('interfaces non chargées') }})</option>`;
       }
     })
     .catch(() => {
@@ -308,16 +307,16 @@ document.getElementById('btn-save-cfg')?.addEventListener('click', () => {
   })
   .then(r => r.json())
   .then(d => {
-    msg.textContent = d.ok ? '✓ Paramètres enregistrés.' : '✗ Erreur';
+    msg.textContent = d.ok ? '✓ {{ _("Paramètres enregistrés.") }}' : '✗ {{ _("Erreur") }}';
     msg.style.color = d.ok ? '#00cc55' : '#ff4444';
-    if (typeof showToast !== 'undefined') showToast(d.ok ? 'Paramètres enregistrés' : 'Erreur', d.ok ? 'success' : 'error');
+    if (typeof showToast !== 'undefined') showToast(d.ok ? '{{ _("Paramètres enregistrés") }}' : '{{ _("Erreur") }}', d.ok ? 'success' : 'error');
   });
 });
 
 // ── Cibles Ping ───────────────────────────────────────────────────────────────
 function closePingModal() { document.getElementById('ping-modal').classList.remove('active'); }
 function deletePingTarget(id, label) {
-  if (!confirm(`Supprimer la cible ping "${label}" ?`)) return;
+  if (!confirm(`{{ _('Supprimer la cible ping') }} "${label}" ?`)) return;
   fetch('/api/ping-targets/' + id, { method: 'DELETE' }).then(() => location.reload());
 }
 document.getElementById('btn-add-ping')?.addEventListener('click', () => {
@@ -333,11 +332,11 @@ document.getElementById('btn-save-ping')?.addEventListener('click', () => {
     host:  document.getElementById('ping-host').value.trim(),
   };
   if (!payload.label || !payload.host) {
-    errEl.textContent = 'Label et hôte requis'; errEl.style.display = 'flex'; return;
+    errEl.textContent = '{{ _("Label et hôte requis") }}'; errEl.style.display = 'flex'; return;
   }
   fetch('/api/ping-targets', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
     .then(r => r.ok ? location.reload() : r.json().then(d => Promise.reject(d.error)))
-    .catch(e => { errEl.textContent = e || 'Erreur'; errEl.style.display = 'flex'; });
+    .catch(e => { errEl.textContent = e || '{{ _("Erreur") }}'; errEl.style.display = 'flex'; });
 });
 
 // ── Mot de passe ──────────────────────────────────────────────────────────────
@@ -354,7 +353,7 @@ document.getElementById('btn-pw').addEventListener('click', () => {
   })
   .then(r => r.json())
   .then(d => {
-    msg.textContent = d.ok ? '✓ Mot de passe mis à jour.' : '✗ ' + d.error;
+    msg.textContent = d.ok ? '✓ {{ _("Mot de passe mis à jour.") }}' : '✗ ' + d.error;
     msg.style.color = d.ok ? '#00cc55' : '#ff4444';
     if (d.ok) ['pw-old','pw-new','pw-confirm'].forEach(id => document.getElementById(id).value = '');
   });
@@ -364,12 +363,12 @@ document.getElementById('btn-pw').addEventListener('click', () => {
 document.getElementById('btn-restore')?.addEventListener('click', () => {
   const file = document.getElementById('restore-file').files[0];
   const msg  = document.getElementById('restore-msg');
-  if (!file) { msg.textContent = 'Sélectionnez un fichier .json'; msg.style.color = '#ff4444'; return; }
+  if (!file) { msg.textContent = '{{ _("Sélectionnez un fichier .json") }}'; msg.style.color = '#ff4444'; return; }
   const reader = new FileReader();
   reader.onload = e => {
     let data;
     try { data = JSON.parse(e.target.result); } catch {
-      msg.textContent = 'Fichier JSON invalide'; msg.style.color = '#ff4444'; return;
+      msg.textContent = '{{ _("Fichier JSON invalide") }}'; msg.style.color = '#ff4444'; return;
     }
     fetch('/api/restore', {
       method: 'POST', headers: {'Content-Type':'application/json'},
@@ -378,21 +377,21 @@ document.getElementById('btn-restore')?.addEventListener('click', () => {
     .then(r => r.json())
     .then(d => {
       if (d.ok) {
-        msg.textContent = `✓ Restauré : ${d.restored.settings} paramètres, ${d.restored.ping_targets} cibles ping`;
+        msg.textContent = `✓ {{ _("Restauré") }} : ${d.restored.settings} {{ _("paramètres") }}, ${d.restored.ping_targets} {{ _("cibles ping") }}`;
         msg.style.color = '#00cc55';
-        showToast('Backup restauré', 'success');
+        showToast('{{ _("Backup restauré") }}', 'success');
       } else {
-        msg.textContent = '✗ ' + (d.error || 'Erreur'); msg.style.color = '#ff4444';
+        msg.textContent = '✗ ' + (d.error || '{{ _("Erreur") }}'); msg.style.color = '#ff4444';
       }
     })
-    .catch(() => { msg.textContent = 'Erreur réseau'; msg.style.color = '#ff4444'; });
+    .catch(() => { msg.textContent = '{{ _("Erreur réseau") }}'; msg.style.color = '#ff4444'; });
   };
   reader.readAsText(file);
 });
 
 // ── Utilisateurs ──────────────────────────────────────────────────────────────
 function deleteUser(id, name) {
-  if (!confirm(`Supprimer l'utilisateur "${name}" ?`)) return;
+  if (!confirm(`{{ _("Supprimer l'utilisateur") }} "${name}" ?`)) return;
   fetch('/api/users/' + id, { method: 'DELETE' }).then(() => location.reload());
 }
 function closeUserModal() {
@@ -430,7 +429,7 @@ function openPermsModal(uid, username) {
   _permsUid = uid;
   document.getElementById('perms-username').textContent = username;
   const list = document.getElementById('perms-routers-list');
-  list.innerHTML = '<p class="txt-muted">Chargement…</p>';
+  list.innerHTML = '<p class="txt-muted">{{ _("Chargement…") }}</p>';
   document.getElementById('perms-modal').classList.add('active');
   fetch('/api/users/' + uid + '/perms')
     .then(r => r.json())
@@ -451,10 +450,10 @@ function toggleRouterPerm(uid, rid, checked) {
     fetch('/api/users/' + uid + '/perms', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ router_id: rid, can_write: false })
-    }).then(() => showToast('Accès accordé', 'success'));
+    }).then(() => showToast('{{ _("Accès accordé") }}', 'success'));
   } else {
     fetch('/api/users/' + uid + '/perms/' + rid, { method: 'DELETE' })
-      .then(() => showToast('Accès révoqué', 'info'));
+      .then(() => showToast('{{ _("Accès révoqué") }}', 'info'));
   }
 }
 {% endif %}

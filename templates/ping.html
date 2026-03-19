@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Ping / Latence{% endblock %}
+{% block title %}{{ _('Ping / Latence') }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1 class="page-title"><i class="fa-solid fa-satellite-dish"></i> Ping / Latence</h1>
-  <span class="page-subtitle">Disponibilité et RTT des hôtes surveillés</span>
+  <h1 class="page-title"><i class="fa-solid fa-satellite-dish"></i> {{ _('Ping / Latence') }}</h1>
+  <span class="page-subtitle">{{ _('Disponibilité et RTT des hôtes surveillés') }}</span>
 </div>
 
 <!-- Toolbar -->
@@ -16,44 +16,56 @@
     <button class="btn-period" data-h="168">7j</button>
   </div>
   <button class="btn btn--primary" style="font-size:12px;padding:4px 10px" id="btn-add-target">
-    <i class="fa-solid fa-plus"></i> Ajouter une cible
+    <i class="fa-solid fa-plus"></i> {{ _('Ajouter une cible') }}
   </button>
   <span class="txt-muted" style="font-size:.85rem;margin-left:auto">
-    Rafraîchissement automatique toutes les 60s
+    {{ _('Rafraîchissement automatique toutes les 60s') }}
   </span>
 </div>
 
 <!-- Formulaire ajout rapide (caché par défaut) -->
 <div class="card mt-4" id="add-target-form" style="display:none">
   <div class="card__header">
-    <span><i class="fa-solid fa-plus"></i> Nouvelle cible ping</span>
+    <span><i class="fa-solid fa-plus"></i> {{ _('Nouvelle cible ping') }}</span>
     <button class="btn-icon" onclick="document.getElementById('add-target-form').style.display='none'">
       <i class="fa-solid fa-xmark"></i>
     </button>
   </div>
   <div class="card__body" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
     <div class="form-group" style="margin:0;flex:1;min-width:160px">
-      <label class="form-label">Label</label>
-      <input class="form-input" type="text" id="new-ping-label" placeholder="ex : Passerelle">
+      <label class="form-label">{{ _('Label') }}</label>
+      <input class="form-input" type="text" id="new-ping-label" placeholder="{{ _('ex : Passerelle') }}">
     </div>
     <div class="form-group" style="margin:0;flex:1;min-width:160px">
-      <label class="form-label">Hôte / IP</label>
+      <label class="form-label">{{ _('Hôte / IP') }}</label>
       <input class="form-input" type="text" id="new-ping-host" placeholder="ex : 192.168.1.1">
     </div>
     <button class="btn btn--primary" id="btn-save-target" style="margin-bottom:0">
-      <i class="fa-solid fa-check"></i> Ajouter
+      <i class="fa-solid fa-check"></i> {{ _('Ajouter') }}
     </button>
     <div id="add-target-err" style="font-size:.85rem;color:#ff4444;margin-top:4px;width:100%"></div>
   </div>
 </div>
 
 <div id="targets-container" class="mt-4">
-  <p class="txt-muted txt-center">Chargement…</p>
+  <p class="txt-muted txt-center">{{ _('Chargement…') }}</p>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+const _i18n = {
+  chargementSla:        "{{ _('Chargement SLA…') }}",
+  aucuneCible:          "{{ _('Aucune cible ping configurée. Cliquez sur') }}",
+  aucuneCibleSuffix:    "{{ _('ci-dessus.') }}",
+  pasDeDonnees:         "{{ _('Pas de données') }}",
+  labelHoteRequis:      "{{ _('Label et hôte requis') }}",
+  erreur:               "{{ _('Erreur') }}",
+  supprimerCible:       "{{ _('Supprimer la cible ping') }}",
+  supprimer:            "{{ _('Supprimer') }}",
+  ajouterUneCible:      "{{ _('+ Ajouter une cible') }}",
+};
+
 let hoursFilter = 1;
 let allTargets  = [];
 
@@ -72,8 +84,8 @@ function slaColor(sla) {
 function renderTargets() {
   const container = document.getElementById('targets-container');
   if (!allTargets.length) {
-    container.innerHTML = '<p class="txt-muted txt-center">Aucune cible ping configurée. '
-      + 'Cliquez sur <strong>+ Ajouter une cible</strong> ci-dessus.</p>';
+    container.innerHTML = `<p class="txt-muted txt-center">${_i18n.aucuneCible} `
+      + `<strong>${_i18n.ajouterUneCible}</strong> ${_i18n.aucuneCibleSuffix}</p>`;
     return;
   }
   // Render cards + fetch history for each
@@ -84,8 +96,8 @@ function renderTargets() {
           <span class="txt-muted" style="font-size:.85rem"> — ${t.host}</span>
         </span>
         <div style="display:flex;align-items:center;gap:8px">
-          <span id="ping-sla-${t.id}" class="txt-muted" style="font-size:.85rem">Chargement SLA…</span>
-          <button class="btn-icon btn-icon--danger" onclick="deleteTarget(${t.id},'${t.label}')" title="Supprimer">
+          <span id="ping-sla-${t.id}" class="txt-muted" style="font-size:.85rem">${_i18n.chargementSla}</span>
+          <button class="btn-icon btn-icon--danger" onclick="deleteTarget(${t.id},'${t.label}')" title="{{ _('Supprimer') }}">
             <i class="fa-solid fa-trash"></i>
           </button>
         </div>
@@ -97,15 +109,15 @@ function renderTargets() {
             <div class="kpi-card__value" id="kpi-sla-${t.id}">—</div>
           </div></div>
           <div class="kpi-card"><div class="kpi-card__body">
-            <div class="kpi-card__label">RTT moyen</div>
+            <div class="kpi-card__label">{{ _('RTT moyen') }}</div>
             <div class="kpi-card__value" id="kpi-avg-${t.id}">—</div>
           </div></div>
           <div class="kpi-card"><div class="kpi-card__body">
-            <div class="kpi-card__label">RTT min</div>
+            <div class="kpi-card__label">{{ _('RTT min') }}</div>
             <div class="kpi-card__value" id="kpi-min-${t.id}">—</div>
           </div></div>
           <div class="kpi-card"><div class="kpi-card__body">
-            <div class="kpi-card__label">RTT max</div>
+            <div class="kpi-card__label">{{ _('RTT max') }}</div>
             <div class="kpi-card__value" id="kpi-max-${t.id}">—</div>
           </div></div>
         </div>
@@ -128,7 +140,7 @@ function loadTarget(t) {
       if (slaEl) slaEl.textContent = sla !== null ? sla + '%' : '—';
       if (slaEl) slaEl.style.color = slaColor(sla);
       const hdrEl = document.getElementById(`ping-sla-${t.id}`);
-      if (hdrEl) hdrEl.textContent = sla !== null ? `SLA ${sla}%` : 'Pas de données';
+      if (hdrEl) hdrEl.textContent = sla !== null ? `SLA ${sla}%` : _i18n.pasDeDonnees;
       if (hdrEl) hdrEl.style.color = slaColor(sla);
       const avgEl = document.getElementById(`kpi-avg-${t.id}`);
       if (avgEl) avgEl.textContent = fmtRtt(s.avg_rtt);
@@ -216,7 +228,7 @@ document.getElementById('btn-save-target')?.addEventListener('click', () => {
   const errEl = document.getElementById('add-target-err');
   const label = document.getElementById('new-ping-label').value.trim();
   const host  = document.getElementById('new-ping-host').value.trim();
-  if (!label || !host) { errEl.textContent = 'Label et hôte requis'; return; }
+  if (!label || !host) { errEl.textContent = _i18n.labelHoteRequis; return; }
   errEl.textContent = '';
   fetch('/api/ping-targets', {
     method: 'POST', headers: {'Content-Type':'application/json'},
@@ -229,11 +241,11 @@ document.getElementById('btn-save-target')?.addEventListener('click', () => {
     document.getElementById('add-target-form').style.display = 'none';
     loadTargets();
   })
-  .catch(e => { errEl.textContent = e || 'Erreur'; });
+  .catch(e => { errEl.textContent = e || _i18n.erreur; });
 });
 
 function deleteTarget(id, label) {
-  if (!confirm(`Supprimer la cible ping "${label}" ?`)) return;
+  if (!confirm(`{{ _('Supprimer la cible ping') }} "${label}" ?`)) return;
   fetch('/api/ping-targets/' + id, { method: 'DELETE' })
     .then(() => loadTargets());
 }

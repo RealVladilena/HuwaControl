@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Clients connectés{% endblock %}
+{% block title %}{{ _('Clients connectés') }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1 class="page-title"><i class="fa-solid fa-users"></i> Clients connectés</h1>
+  <h1 class="page-title"><i class="fa-solid fa-users"></i> {{ _('Clients connectés') }}</h1>
   <div style="display:flex;align-items:center;gap:.75rem">
-    <span class="txt-muted" id="client-count">Chargement…</span>
-    <button class="btn btn--ghost" id="btn-refresh" title="Rafraîchir">
-      <i class="fa-solid fa-rotate"></i> Rafraîchir
+    <span class="txt-muted" id="client-count">{{ _('Chargement…') }}</span>
+    <button class="btn btn--ghost" id="btn-refresh" title="{{ _('Rafraîchir') }}">
+      <i class="fa-solid fa-rotate"></i> {{ _('Rafraîchir') }}
     </button>
     <a href="/api/export/arp" class="btn btn--ghost" style="font-size:12px;padding:4px 10px">
       <i class="fa-solid fa-file-csv"></i> CSV ARP
@@ -17,8 +17,8 @@
 
 <!-- Onglets -->
 <div class="btn-group" id="clients-tabs" style="margin-bottom:1rem">
-  <button class="btn-period btn-period--active" data-tab="arp-live">ARP actuel</button>
-  <button class="btn-period" data-tab="arp-history">Historique ARP</button>
+  <button class="btn-period btn-period--active" data-tab="arp-live">{{ _('ARP actuel') }}</button>
+  <button class="btn-period" data-tab="arp-history">{{ _('Historique ARP') }}</button>
   <button class="btn-period" data-tab="dhcp">DHCP Leases</button>
 </div>
 
@@ -28,10 +28,10 @@
     <div class="card__body card__body--no-pad">
       <table class="table" id="clients-table">
         <thead>
-          <tr><th>#</th><th>Adresse IP</th><th>Adresse MAC</th><th>Fabricant</th></tr>
+          <tr><th>#</th><th>{{ _('Adresse IP') }}</th><th>{{ _('Adresse MAC') }}</th><th>{{ _('Fabricant') }}</th></tr>
         </thead>
         <tbody id="clients-tbody">
-          <tr><td colspan="4" class="txt-muted txt-center">Chargement…</td></tr>
+          <tr><td colspan="4" class="txt-muted txt-center">{{ _('Chargement…') }}</td></tr>
         </tbody>
       </table>
     </div>
@@ -44,10 +44,10 @@
     <div class="card__body card__body--no-pad">
       <table class="table" style="font-size:.85rem">
         <thead>
-          <tr><th>MAC</th><th>IP actuelle</th><th>Fabricant</th><th>Première vue</th><th>Dernière vue</th></tr>
+          <tr><th>MAC</th><th>{{ _('IP actuelle') }}</th><th>{{ _('Fabricant') }}</th><th>{{ _('Première vue') }}</th><th>{{ _('Dernière vue') }}</th></tr>
         </thead>
         <tbody id="arp-history-tbody">
-          <tr><td colspan="5" class="txt-muted txt-center">Chargement…</td></tr>
+          <tr><td colspan="5" class="txt-muted txt-center">{{ _('Chargement…') }}</td></tr>
         </tbody>
       </table>
     </div>
@@ -60,10 +60,10 @@
     <div class="card__body card__body--no-pad">
       <table class="table" style="font-size:.85rem">
         <thead>
-          <tr><th>MAC</th><th>IP allouée</th><th>Type</th><th>TTL restant</th><th>VRF</th></tr>
+          <tr><th>MAC</th><th>{{ _('IP allouée') }}</th><th>{{ _('Type') }}</th><th>{{ _('TTL restant') }}</th><th>VRF</th></tr>
         </thead>
         <tbody id="dhcp-tbody">
-          <tr><td colspan="5" class="txt-muted txt-center">Chargement…</td></tr>
+          <tr><td colspan="5" class="txt-muted txt-center">{{ _('Chargement…') }}</td></tr>
         </tbody>
       </table>
     </div>
@@ -72,7 +72,7 @@
 
 <div class="alert" id="info-notice" style="margin-top:1rem;display:none">
   <i class="fa-solid fa-circle-info"></i>
-  Les clients affichés correspondent aux entrées ARP dynamiques du routeur (wired + WiFi confondus).
+  {{ _('Les clients affichés correspondent aux entrées ARP dynamiques du routeur (wired + WiFi confondus).') }}
 </div>
 {% endblock %}
 
@@ -299,7 +299,7 @@ function loadClients() {
       count.textContent = list.length + ' client' + (list.length !== 1 ? 's' : '');
 
       if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="txt-muted txt-center">Aucun client détecté</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="txt-muted txt-center">{{ _("Aucun client détecté") }}</td></tr>';
         document.getElementById('info-notice').style.display = '';
         return;
       }
@@ -326,7 +326,7 @@ function loadClients() {
     })
     .catch(() => {
       document.getElementById('clients-tbody').innerHTML =
-        '<tr><td colspan="4" class="txt-red txt-center">Erreur lors de la requête SNMP</td></tr>';
+        '<tr><td colspan="4" class="txt-red txt-center">{{ _("Erreur lors de la requête SNMP") }}</td></tr>';
     })
     .finally(() => {
       btn.querySelector('i').classList.remove('fa-spin');
@@ -375,13 +375,13 @@ function fmtDate(ts) {
 
 function loadArpHistory() {
   const tbody = document.getElementById('arp-history-tbody');
-  tbody.innerHTML = '<tr><td colspan="5" class="txt-muted txt-center">Chargement…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="5" class="txt-muted txt-center">{{ _("Chargement…") }}</td></tr>';
   fetch(apiUrl('/api/arp'))
     .then(r => r.json())
     .then(list => {
       _arpHistoryLoaded = true;
       if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="txt-muted txt-center">Aucune entrée ARP historisée</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="txt-muted txt-center">{{ _("Aucune entrée ARP historisée") }}</td></tr>';
         return;
       }
       tbody.innerHTML = list.map(r => {
@@ -396,7 +396,7 @@ function loadArpHistory() {
       }).join('');
     })
     .catch(() => {
-      tbody.innerHTML = '<tr><td colspan="5" class="txt-red txt-center">Erreur de chargement</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="txt-red txt-center">{{ _("Erreur de chargement") }}</td></tr>';
     });
 }
 
@@ -410,13 +410,13 @@ function fmtTTL(secs) {
 
 function loadDhcp() {
   const tbody = document.getElementById('dhcp-tbody');
-  tbody.innerHTML = '<tr><td colspan="5" class="txt-muted txt-center">Chargement…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="5" class="txt-muted txt-center">{{ _("Chargement…") }}</td></tr>';
   fetch(apiUrl('/api/dhcp'))
     .then(r => r.json())
     .then(list => {
       _dhcpLoaded = true;
       if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="txt-muted txt-center">Aucun bail DHCP actif (SNMP non configuré ou MIB non supportée)</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="txt-muted txt-center">{{ _("Aucun bail DHCP actif (SNMP non configuré ou MIB non supportée)") }}</td></tr>';
         return;
       }
       tbody.innerHTML = list.map(r => `<tr>
@@ -428,7 +428,7 @@ function loadDhcp() {
       </tr>`).join('');
     })
     .catch(() => {
-      tbody.innerHTML = '<tr><td colspan="5" class="txt-red txt-center">Erreur de chargement</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="txt-red txt-center">{{ _("Erreur de chargement") }}</td></tr>';
     });
 }
 

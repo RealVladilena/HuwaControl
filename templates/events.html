@@ -1,40 +1,40 @@
 {% extends "base.html" %}
-{% block title %}Événements{% endblock %}
+{% block title %}{{ _('Événements') }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1 class="page-title"><i class="fa-solid fa-bell"></i> Événements</h1>
-  <span class="page-subtitle">Journal des alertes et notifications</span>
+  <h1 class="page-title"><i class="fa-solid fa-bell"></i> {{ _('Événements') }}</h1>
+  <span class="page-subtitle">{{ _('Journal des alertes et notifications') }}</span>
 </div>
 
 <!-- Filtres -->
 <div class="toolbar" style="gap:12px;flex-wrap:wrap">
   <div class="btn-group" id="lvl-group">
-    <button class="btn-period btn-period--active" data-lvl="">Tous</button>
+    <button class="btn-period btn-period--active" data-lvl="">{{ _('Tous') }}</button>
     <button class="btn-period" data-lvl="info">Info</button>
-    <button class="btn-period" data-lvl="warning">Alerte</button>
-    <button class="btn-period" data-lvl="error">Erreur</button>
+    <button class="btn-period" data-lvl="warning">{{ _('Alerte') }}</button>
+    <button class="btn-period" data-lvl="error">{{ _('Erreur') }}</button>
   </div>
   <div class="btn-group" id="cat-group">
-    <button class="btn-period btn-period--active" data-cat="">Catégories</button>
+    <button class="btn-period btn-period--active" data-cat="">{{ _('Catégories') }}</button>
     <button class="btn-period" data-cat="interface">Interface</button>
-    <button class="btn-period" data-cat="temperature">Température</button>
-    <button class="btn-period" data-cat="bandwidth">Bande passante</button>
+    <button class="btn-period" data-cat="temperature">{{ _('Température') }}</button>
+    <button class="btn-period" data-cat="bandwidth">{{ _('Bande passante') }}</button>
     <button class="btn-period" data-cat="ping">Ping</button>
     <button class="btn-period" data-cat="snmp_trap">SNMP Trap</button>
   </div>
   <label class="form-check" style="font-size:.85rem">
-    <input type="checkbox" id="chk-unacked"> <span>Non acquittés seulement</span>
+    <input type="checkbox" id="chk-unacked"> <span>{{ _('Non acquittés seulement') }}</span>
   </label>
   <div style="margin-left:auto;display:flex;gap:8px">
     <a href="/api/export/events" class="btn btn--ghost" style="font-size:12px;padding:4px 10px">
       <i class="fa-solid fa-file-csv"></i> CSV
     </a>
     <button class="btn btn--primary" style="font-size:12px;padding:4px 10px" id="btn-ack-all">
-      <i class="fa-solid fa-check-double"></i> Tout acquitter
+      <i class="fa-solid fa-check-double"></i> {{ _('Tout acquitter') }}
     </button>
     <button class="btn btn--danger" style="font-size:12px;padding:4px 10px" id="btn-clear">
-      <i class="fa-solid fa-trash"></i> Vider
+      <i class="fa-solid fa-trash"></i> {{ _('Vider') }}
     </button>
   </div>
 </div>
@@ -45,17 +45,17 @@
     <table class="table" id="events-table">
       <thead>
         <tr>
-          <th style="width:140px">Date/Heure</th>
-          <th style="width:80px">Niveau</th>
-          <th style="width:110px">Catégorie</th>
-          <th style="width:140px">Routeur</th>
-          <th>Titre</th>
-          <th>Message</th>
-          <th style="width:80px">Acquitté</th>
+          <th style="width:140px">{{ _('Date/Heure') }}</th>
+          <th style="width:80px">{{ _('Niveau') }}</th>
+          <th style="width:110px">{{ _('Catégorie') }}</th>
+          <th style="width:140px">{{ _('Routeur') }}</th>
+          <th>{{ _('Titre') }}</th>
+          <th>{{ _('Message') }}</th>
+          <th style="width:80px">{{ _('Acquitté') }}</th>
         </tr>
       </thead>
       <tbody id="events-tbody">
-        <tr><td colspan="7" class="txt-muted txt-center">Chargement…</td></tr>
+        <tr><td colspan="7" class="txt-muted txt-center">{{ _('Chargement…') }}</td></tr>
       </tbody>
     </table>
   </div>
@@ -72,8 +72,8 @@ let allEvents    = [];
 const LEVEL_BADGE = {
   info:    '<span class="badge badge--neutral">Info</span>',
   success: '<span class="badge badge--up">OK</span>',
-  warning: '<span class="badge" style="background:rgba(254,231,92,.15);color:#FEE75C">⚠ Alerte</span>',
-  error:   '<span class="badge badge--down">Erreur</span>',
+  warning: `<span class="badge" style="background:rgba(254,231,92,.15);color:#FEE75C">⚠ {{ _('Alerte') }}</span>`,
+  error:   `<span class="badge badge--down">{{ _('Erreur') }}</span>`,
 };
 const CAT_ICON = {
   interface:   '<i class="fa-solid fa-diagram-project"></i>',
@@ -110,7 +110,7 @@ function renderEvents() {
   if (filterCat)    rows = rows.filter(e => e.category === filterCat);
   if (filterUnacked) rows = rows.filter(e => !e.acked);
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="txt-muted txt-center">Aucun événement</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="txt-muted txt-center">{{ _("Aucun événement") }}</td></tr>';
     return;
   }
   tbody.innerHTML = rows.map(e => `
@@ -122,8 +122,8 @@ function renderEvents() {
       <td style="font-size:.9rem">${e.title||''}</td>
       <td class="txt-muted" style="font-size:.82rem">${e.message||''}</td>
       <td>${e.acked
-        ? `<span class="badge badge--neutral" title="Vu par ${e.acked_by||'?'}">✓ Vu</span>`
-        : `<button class="btn" style="font-size:11px;padding:2px 8px" onclick="ackEvent(${e.id},this)">Acquitter</button>`
+        ? `<span class="badge badge--neutral" title="{{ _('Vu par') }} ${e.acked_by||'?'}">✓ {{ _('Vu') }}</span>`
+        : `<button class="btn" style="font-size:11px;padding:2px 8px" onclick="ackEvent(${e.id},this)">{{ _('Acquitter') }}</button>`
       }</td>
     </tr>`).join('');
 }
@@ -165,7 +165,7 @@ document.getElementById('chk-unacked').addEventListener('change', e => {
 });
 
 document.getElementById('btn-ack-all').addEventListener('click', () => {
-  if (!confirm('Acquitter tous les événements non-acquittés ?')) return;
+  if (!confirm('{{ _("Acquitter tous les événements non-acquittés ?") }}')) return;
   fetch('/api/events/ack-all', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
@@ -182,7 +182,7 @@ document.getElementById('btn-ack-all').addEventListener('click', () => {
 });
 
 document.getElementById('btn-clear').addEventListener('click', () => {
-  if (!confirm('Vider tous les événements affichés ?')) return;
+  if (!confirm('{{ _("Vider tous les événements affichés ?") }}')) return;
   allEvents = [];
   renderEvents();
 });

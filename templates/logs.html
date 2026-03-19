@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Logs routeur{% endblock %}
+{% block title %}{{ _('Logs routeur') }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1 class="page-title"><i class="fa-solid fa-terminal"></i> Logs routeur</h1>
-  <span class="page-subtitle">Syslog UDP reçu sur le port {{ syslog_port }}</span>
+  <h1 class="page-title"><i class="fa-solid fa-terminal"></i> {{ _('Logs routeur') }}</h1>
+  <span class="page-subtitle">{{ _('Syslog UDP reçu sur le port') }} {{ syslog_port }}</span>
 </div>
 
 <!-- Config tutorial -->
@@ -12,7 +12,7 @@
   <summary style="padding:14px 18px;cursor:pointer;display:flex;align-items:center;gap:10px;
                   font-weight:600;font-size:.95rem;list-style:none;user-select:none">
     <i class="fa-solid fa-circle-question" style="color:var(--red)"></i>
-    Comment configurer l'envoi des logs depuis le routeur ?
+    {{ _('Comment configurer l\'envoi des logs depuis le routeur ?') }}
     <i class="fa-solid fa-chevron-down" style="margin-left:auto;font-size:.75rem;color:var(--txt-muted)"
        id="tutorial-chevron"></i>
   </summary>
@@ -23,26 +23,26 @@
     <div style="margin-top:1rem">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:.6rem">
         <span style="background:var(--red);color:#fff;font-size:.72rem;font-weight:700;
-                     padding:2px 8px;border-radius:12px">MÉTHODE 1</span>
-        <strong>Via SSH / Console (CLI)</strong>
+                     padding:2px 8px;border-radius:12px">{{ _('MÉTHODE 1') }}</span>
+        <strong>{{ _('Via SSH / Console (CLI)') }}</strong>
       </div>
       <p class="txt-muted" style="font-size:.85rem;margin-bottom:.5rem">
-        Connectez-vous en SSH au routeur, puis entrez les commandes suivantes en mode système :
+        {{ _('Connectez-vous en SSH au routeur, puis entrez les commandes suivantes en mode système :') }}
       </p>
       <div style="background:#0a0a0a;border-radius:8px;padding:12px 16px;font-family:monospace;
                   font-size:.82rem;line-height:1.8;border:1px solid var(--border)">
-        <span style="color:#888"># Activer le centre d'information</span><br>
+        <span style="color:#888"># {{ _('Activer le centre d\'information') }}</span><br>
         <span style="color:#4af">info-center enable</span><br><br>
-        <span style="color:#888"># Déclarer le serveur syslog (remplacez l'IP)</span><br>
+        <span style="color:#888"># {{ _('Déclarer le serveur syslog (remplacez l\'IP)') }}</span><br>
         <span style="color:#4af">info-center loghost <span style="color:#f90">{{ request.host.split(':')[0] }}</span> facility local6</span><br><br>
-        <span style="color:#888"># Activer l'envoi sur le canal syslog</span><br>
+        <span style="color:#888"># {{ _('Activer l\'envoi sur le canal syslog') }}</span><br>
         <span style="color:#4af">info-center loghost source <span style="color:#f90">GigabitEthernet0/0/0</span></span><br><br>
-        <span style="color:#888"># Vérification</span><br>
+        <span style="color:#888"># {{ _('Vérification') }}</span><br>
         <span style="color:#4af">display info-center</span>
       </div>
       <p class="txt-muted" style="font-size:.78rem;margin-top:.4rem">
-        Port UDP standard : <strong>514</strong> — mappé automatiquement vers le récepteur interne.
-        Si votre routeur propose un champ port, entrez <strong>514</strong>.
+        {{ _('Port UDP standard :') }} <strong>514</strong> — {{ _('mappé automatiquement vers le récepteur interne.') }}
+        {{ _('Si votre routeur propose un champ port, entrez') }} <strong>514</strong>.
       </p>
     </div>
 
@@ -52,13 +52,13 @@
     <div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:.6rem">
         <span style="background:#1a6fa8;color:#fff;font-size:.72rem;font-weight:700;
-                     padding:2px 8px;border-radius:12px">MÉTHODE 2</span>
-        <strong>Via l'interface Web eWeb (sans SSH)</strong>
+                     padding:2px 8px;border-radius:12px">{{ _('MÉTHODE 2') }}</span>
+        <strong>{{ _('Via l\'interface Web eWeb (sans SSH)') }}</strong>
       </div>
       <p class="txt-muted" style="font-size:.85rem;margin-bottom:.75rem">
-        Accédez à l'interface web du routeur (généralement <code style="font-size:.78rem;
+        {{ _('Accédez à l\'interface web du routeur (généralement') }} <code style="font-size:.78rem;
         background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px">http://192.168.x.x</code>)
-        puis suivez le chemin :
+        {{ _('puis suivez le chemin :') }}
       </p>
       <div style="display:flex;flex-direction:column;gap:10px">
         <!-- Étapes -->
@@ -67,10 +67,10 @@
                       display:flex;align-items:center;justify-content:center;
                       font-size:.8rem;font-weight:700;flex-shrink:0">1</div>
           <div>
-            <div style="font-size:.88rem;font-weight:600">Accès au menu principal</div>
+            <div style="font-size:.88rem;font-weight:600">{{ _('Accès au menu principal') }}</div>
             <div class="txt-muted" style="font-size:.82rem">
-              Menu <strong>Diagnostic</strong> → <strong>Info-center</strong>
-              <br><em>Ou selon la version firmware : System → Log Management → Loghost</em>
+              {{ _('Menu') }} <strong>Diagnostic</strong> → <strong>Info-center</strong>
+              <br><em>{{ _('Ou selon la version firmware : System → Log Management → Loghost') }}</em>
             </div>
           </div>
         </div>
@@ -79,9 +79,9 @@
                       display:flex;align-items:center;justify-content:center;
                       font-size:.8rem;font-weight:700;flex-shrink:0">2</div>
           <div>
-            <div style="font-size:.88rem;font-weight:600">Activer l'info-center</div>
+            <div style="font-size:.88rem;font-weight:600">{{ _('Activer l\'info-center') }}</div>
             <div class="txt-muted" style="font-size:.82rem">
-              Cochez/activez <strong>"Info-center Enable"</strong> si ce n'est pas déjà fait.
+              {{ _('Cochez/activez') }} <strong>"Info-center Enable"</strong> {{ _('si ce n\'est pas déjà fait.') }}
             </div>
           </div>
         </div>
@@ -90,9 +90,9 @@
                       display:flex;align-items:center;justify-content:center;
                       font-size:.8rem;font-weight:700;flex-shrink:0">3</div>
           <div>
-            <div style="font-size:.88rem;font-weight:600">Ajouter un loghost</div>
+            <div style="font-size:.88rem;font-weight:600">{{ _('Ajouter un loghost') }}</div>
             <div class="txt-muted" style="font-size:.82rem">
-              Cliquez <strong>Ajouter</strong> et renseignez :
+              {{ _('Cliquez') }} <strong>{{ _('Ajouter') }}</strong> {{ _('et renseignez :') }}
             </div>
             <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 12px;
                         font-size:.82rem;margin-top:6px;background:rgba(255,255,255,.04);
@@ -102,8 +102,8 @@
             </div>
             <div class="alert alert--info" style="margin-top:.5rem;font-size:.8rem;padding:6px 10px">
               <i class="fa-solid fa-circle-info"></i>
-              L'AR651W n'expose pas de champ "port" dans eWeb — il utilise toujours le port standard
-              <strong>UDP 514</strong>. HuwaControl redirige automatiquement ce port vers son récepteur interne.
+              {{ _('L\'AR651W n\'expose pas de champ "port" dans eWeb — il utilise toujours le port standard') }}
+              <strong>UDP 514</strong>. {{ _('HuwaControl redirige automatiquement ce port vers son récepteur interne.') }}
             </div>
           </div>
         </div>
@@ -112,10 +112,10 @@
                       display:flex;align-items:center;justify-content:center;
                       font-size:.8rem;font-weight:700;flex-shrink:0">4</div>
           <div>
-            <div style="font-size:.88rem;font-weight:600">Sauvegarder et tester</div>
+            <div style="font-size:.88rem;font-weight:600">{{ _('Sauvegarder et tester') }}</div>
             <div class="txt-muted" style="font-size:.82rem">
-              Cliquez <strong>Appliquer / OK</strong>. Les logs devraient apparaître dans cette page sous quelques secondes.
-              Si rien n'apparaît, vérifiez que le port UDP <strong>{{ syslog_port }}</strong> est accessible (pas de firewall entre le routeur et ce serveur).
+              {{ _('Cliquez') }} <strong>{{ _('Appliquer / OK') }}</strong>. {{ _('Les logs devraient apparaître dans cette page sous quelques secondes.') }}
+              {{ _('Si rien n\'apparaît, vérifiez que le port UDP') }} <strong>{{ syslog_port }}</strong> {{ _('est accessible (pas de firewall entre le routeur et ce serveur).') }}
             </div>
           </div>
         </div>
@@ -142,7 +142,7 @@ if (_det && _chv) {
 <!-- Mini-dashboard syslog 24h -->
 <div class="card mb-3" id="syslog-stats-card" style="margin-bottom:1rem">
   <div class="card__header">
-    <span><i class="fa-solid fa-chart-pie" style="color:var(--red)"></i> Statistiques — dernières 24h</span>
+    <span><i class="fa-solid fa-chart-pie" style="color:var(--red)"></i> {{ _('Statistiques — dernières 24h') }}</span>
     <div class="btn-group" id="stats-period-group" style="font-size:.8rem">
       <button class="btn-period btn-period--active" data-hours="24">24h</button>
       <button class="btn-period" data-hours="48">48h</button>
@@ -154,26 +154,26 @@ if (_det && _chv) {
     <div id="syslog-stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:1rem">
       <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px;text-align:center">
         <div style="font-size:1.4rem;font-weight:700;color:var(--txt)" id="sl-total">—</div>
-        <div style="font-size:.75rem;color:var(--txt-muted);margin-top:2px">Messages</div>
+        <div style="font-size:.75rem;color:var(--txt-muted);margin-top:2px">{{ _('Messages') }}</div>
       </div>
       <div style="background:rgba(204,0,0,.08);border:1px solid rgba(204,0,0,.2);
                   border-radius:8px;padding:10px 14px;text-align:center">
         <div style="font-size:1.4rem;font-weight:700;color:#ff6666" id="sl-errors">—</div>
-        <div style="font-size:.75rem;color:var(--txt-muted);margin-top:2px">Erreurs</div>
+        <div style="font-size:.75rem;color:var(--txt-muted);margin-top:2px">{{ _('Erreurs') }}</div>
       </div>
       <div style="background:rgba(224,112,0,.08);border:1px solid rgba(224,112,0,.2);
                   border-radius:8px;padding:10px 14px;text-align:center">
         <div style="font-size:1.4rem;font-weight:700;color:#f5a800" id="sl-warnings">—</div>
-        <div style="font-size:.75rem;color:var(--txt-muted);margin-top:2px">Avertissements</div>
+        <div style="font-size:.75rem;color:var(--txt-muted);margin-top:2px">{{ _('Avertissements') }}</div>
       </div>
       <div style="background:rgba(58,123,213,.08);border:1px solid rgba(58,123,213,.2);
                   border-radius:8px;padding:10px 14px;text-align:center">
         <div style="font-size:1.4rem;font-weight:700;color:#5a9bf5" id="sl-wifi-on">—</div>
-        <div style="font-size:.75rem;color:var(--txt-muted);margin-top:2px">Connexions WiFi</div>
+        <div style="font-size:.75rem;color:var(--txt-muted);margin-top:2px">{{ _('Connexions WiFi') }}</div>
       </div>
       <div style="background:rgba(255,255,255,.03);border-radius:8px;padding:10px 14px;text-align:center">
         <div style="font-size:1.4rem;font-weight:700;color:#888" id="sl-wifi-off">—</div>
-        <div style="font-size:.75rem;color:var(--txt-muted);margin-top:2px">Déconnexions WiFi</div>
+        <div style="font-size:.75rem;color:var(--txt-muted);margin-top:2px">{{ _('Déconnexions WiFi') }}</div>
       </div>
     </div>
     <!-- Top programmes -->
@@ -184,9 +184,9 @@ if (_det && _chv) {
 <!-- Filtres -->
 <div class="toolbar" style="gap:12px;flex-wrap:wrap">
   <div style="display:flex;align-items:center;gap:6px">
-    <label class="form-label" style="margin:0;white-space:nowrap">Sévérité max :</label>
+    <label class="form-label" style="margin:0;white-space:nowrap">{{ _('Sévérité max :') }}</label>
     <select class="form-input" id="filter-severity" style="width:auto;padding:4px 10px">
-      <option value="7">Debug (tout)</option>
+      <option value="7">{{ _('Debug (tout)') }}</option>
       <option value="6" selected>Info</option>
       <option value="5">Notice</option>
       <option value="4">Warning</option>
@@ -199,20 +199,20 @@ if (_det && _chv) {
   <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:200px">
     <i class="fa-solid fa-magnifying-glass txt-muted"></i>
     <input class="form-input" type="text" id="filter-search"
-           placeholder="Recherche dans les messages…" style="flex:1">
+           placeholder="{{ _('Recherche dans les messages…') }}" style="flex:1">
   </div>
   <button class="btn btn--primary" id="btn-apply">
-    <i class="fa-solid fa-filter"></i> Filtrer
+    <i class="fa-solid fa-filter"></i> {{ _('Filtrer') }}
   </button>
   <button class="btn btn--ghost" id="btn-refresh">
-    <i class="fa-solid fa-rotate"></i> Actualiser
+    <i class="fa-solid fa-rotate"></i> {{ _('Actualiser') }}
   </button>
   <a href="/api/export/syslogs" class="btn btn--ghost" style="font-size:12px;padding:4px 12px">
     <i class="fa-solid fa-file-csv"></i> CSV
   </a>
   {% if current_user.is_admin %}
-  <button class="btn btn--danger" id="btn-purge" title="Supprimer les logs de plus de 30 jours">
-    <i class="fa-solid fa-trash"></i> Purge 30j
+  <button class="btn btn--danger" id="btn-purge" title="{{ _('Supprimer les logs de plus de 30 jours') }}">
+    <i class="fa-solid fa-trash"></i> {{ _('Purge 30j') }}
   </button>
   {% endif %}
 </div>
@@ -222,13 +222,13 @@ if (_det && _chv) {
   <span style="font-size:.85rem;color:var(--txt-muted)">
     <span id="log-range">—</span>
     <span style="opacity:.5;margin:0 4px">/</span>
-    <span id="log-count-total">—</span> entrées
+    <span id="log-count-total">—</span> {{ _('entrées') }}
   </span>
   <span id="log-live-badge" style="font-size:.82rem;color:var(--green);display:flex;align-items:center;gap:5px">
-    <span class="dot dot--up"></span> En direct
+    <span class="dot dot--up"></span> {{ _('En direct') }}
   </span>
   <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
-    <label style="font-size:.82rem;color:var(--txt-muted);white-space:nowrap">Par page :</label>
+    <label style="font-size:.82rem;color:var(--txt-muted);white-space:nowrap">{{ _('Par page :') }}</label>
     <select class="form-input" id="page-size-select" style="width:auto;padding:4px 10px;font-size:.82rem">
       <option value="10">10</option>
       <option value="20">20</option>
@@ -244,15 +244,15 @@ if (_det && _chv) {
     <table class="table" id="log-table" style="font-size:.82rem">
       <thead>
         <tr>
-          <th style="width:145px">Horodatage</th>
-          <th style="width:76px">Sévérité</th>
-          <th style="width:115px">Source</th>
-          <th style="width:115px">Programme</th>
-          <th>Message</th>
+          <th style="width:145px">{{ _('Horodatage') }}</th>
+          <th style="width:76px">{{ _('Sévérité') }}</th>
+          <th style="width:115px">{{ _('Source') }}</th>
+          <th style="width:115px">{{ _('Programme') }}</th>
+          <th>{{ _('Message') }}</th>
         </tr>
       </thead>
       <tbody id="log-tbody">
-        <tr><td colspan="5" class="txt-muted txt-center">Chargement…</td></tr>
+        <tr><td colspan="5" class="txt-muted txt-center">{{ _('Chargement…') }}</td></tr>
       </tbody>
     </table>
   </div>
@@ -260,17 +260,17 @@ if (_det && _chv) {
 
 <!-- Pagination -->
 <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:1rem;flex-wrap:wrap" id="pagination-bar">
-  <button class="btn btn--ghost" id="btn-first" disabled title="Première page">
+  <button class="btn btn--ghost" id="btn-first" disabled title="{{ _('Première page') }}">
     <i class="fa-solid fa-angles-left"></i>
   </button>
-  <button class="btn btn--ghost" id="btn-prev" disabled title="Page précédente">
+  <button class="btn btn--ghost" id="btn-prev" disabled title="{{ _('Page précédente') }}">
     <i class="fa-solid fa-chevron-left"></i>
   </button>
   <div id="page-numbers" style="display:flex;gap:4px"></div>
-  <button class="btn btn--ghost" id="btn-next" title="Page suivante">
+  <button class="btn btn--ghost" id="btn-next" title="{{ _('Page suivante') }}">
     <i class="fa-solid fa-chevron-right"></i>
   </button>
-  <button class="btn btn--ghost" id="btn-last" title="Dernière page">
+  <button class="btn btn--ghost" id="btn-last" title="{{ _('Dernière page') }}">
     <i class="fa-solid fa-angles-right"></i>
   </button>
   <span class="txt-muted" style="font-size:.8rem;margin-left:8px" id="page-info"></span>

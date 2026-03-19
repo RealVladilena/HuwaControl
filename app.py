@@ -19,6 +19,7 @@ import ping_collector
 import reports
 import syslog_receiver as syslog_recv
 import snmp_trap_receiver as trap_recv
+import i18n as _i18n
 
 logging.basicConfig(
     level=logging.DEBUG if config.DEBUG else logging.INFO,
@@ -46,6 +47,19 @@ app.config.update(
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
 login_manager.login_message = "Veuillez vous connecter."
+
+
+# ─── i18n ─────────────────────────────────────────────────────────────────────
+
+_SUPPORTED_LANGS = ("fr", "en")
+
+
+def _get_locale() -> str:
+    lang = session.get("lang")
+    if lang in _SUPPORTED_LANGS:
+        return lang
+    best = request.accept_languages.best_match(_SUPPORTED_LANGS)
+    return best or "fr"
 
 
 # ── Security headers (toutes les réponses) ────────────────────────────────────
@@ -141,12 +155,21 @@ def _stop_job(router_id: int) -> None:
         log.info("Job arrêté : router_id=%d", router_id)
 
 
+# ─── Language switcher ────────────────────────────────────────────────────────
+
+@app.route("/set_lang/<lang>")
+def set_lang(lang: str):
+    if lang in _SUPPORTED_LANGS:
+        session["lang"] = lang
+    return redirect(request.referrer or url_for("overview"))
+
+
 # ─── Hooks ────────────────────────────────────────────────────────────────────
 
 @app.before_request
 def guard():
     """Redirige vers /setup si aucun utilisateur n'existe encore."""
-    if request.endpoint in ("setup", "static", "login", "logout"):
+    if request.endpoint in ("setup", "static", "login", "logout", "set_lang"):
         return None
     if db.needs_setup():
         return redirect(url_for("setup"))
@@ -160,10 +183,15 @@ def inject_routers():
         routers = db.get_all_routers() if not db.needs_setup() else []
     except Exception:
         routers = []
+    lang = _get_locale()
+    def _(text: str) -> str:
+        return _i18n.translate(text, lang)
     return {
-        "all_routers":   routers,
-        "APP_VERSION":   config.APP_VERSION,
+        "all_routers":    routers,
+        "APP_VERSION":    config.APP_VERSION,
         "APP_BUILD_DATE": config.APP_BUILD_DATE,
+        "_":              _,
+        "current_lang":   lang,
     }
 
 

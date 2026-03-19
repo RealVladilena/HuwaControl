@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Interfaces{% endblock %}
+{% block title %}{{ _('Interfaces') }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1 class="page-title"><i class="fa-solid fa-diagram-project"></i> Interfaces réseau</h1>
-  <span class="page-subtitle">Trafic par interface — graphiques en temps réel</span>
+  <h1 class="page-title"><i class="fa-solid fa-diagram-project"></i> {{ _('Interfaces réseau') }}</h1>
+  <span class="page-subtitle">{{ _('Trafic par interface — graphiques en temps réel') }}</span>
 </div>
 
 <!-- Toolbar -->
 <div class="toolbar">
-  <span class="toolbar__label">Période :</span>
+  <span class="toolbar__label">{{ _('Période :') }}</span>
   <div class="btn-group" id="period-group">
     <button class="btn-period btn-period--active" data-hours="1">1h</button>
     <button class="btn-period" data-hours="6">6h</button>
@@ -34,13 +34,13 @@
     <table class="table" style="font-size:.85rem">
       <thead>
         <tr>
-          <th>#</th><th>Interface</th><th>Statut</th><th>Vitesse</th>
+          <th>#</th><th>Interface</th><th>{{ _('Statut') }}</th><th>{{ _('Vitesse') }}</th>
           <th>IN bps</th><th>OUT bps</th><th>IN pps</th><th>OUT pps</th>
-          <th>Erreurs</th><th style="min-width:100px">Tendance</th>
+          <th>{{ _('Erreurs') }}</th><th style="min-width:100px">{{ _('Tendance') }}</th>
         </tr>
       </thead>
       <tbody id="iface-table-tbody">
-        <tr><td colspan="10" class="txt-muted txt-center">Chargement…</td></tr>
+        <tr><td colspan="10" class="txt-muted txt-center">{{ _('Chargement…') }}</td></tr>
       </tbody>
     </table>
   </div>
@@ -56,7 +56,7 @@
         <span class="iface-card__idx txt-muted">#{{ iface.if_index }}</span>
         <button class="btn-icon" style="font-size:10px;opacity:.6"
                 onclick="renameIface({{ iface.if_index }}, '{{ iface.if_name }}')"
-                title="Renommer l'interface">
+                title="{{ _('Renommer l\'interface') }}">
           <i class="fa-solid fa-pen-to-square"></i>
         </button>
       </div>
@@ -96,7 +96,7 @@
   {% else %}
   <div class="empty-state">
     <i class="fa-solid fa-plug-circle-xmark"></i>
-    <p>Aucune interface détectée. Vérifiez la configuration SNMP.</p>
+    <p>{{ _('Aucune interface détectée. Vérifiez la configuration SNMP.') }}</p>
   </div>
   {% endfor %}
 </div>
@@ -104,25 +104,25 @@
 <div class="modal-overlay" id="rename-modal">
   <div class="modal-card" style="max-width:400px">
     <div class="modal-header">
-      <span><i class="fa-solid fa-pen-to-square"></i> Renommer l'interface</span>
+      <span><i class="fa-solid fa-pen-to-square"></i> {{ _('Renommer l\'interface') }}</span>
       <button class="btn-icon" onclick="closeRenameModal()"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
       <div class="form-group">
-        <label class="form-label">Nom SNMP original</label>
+        <label class="form-label">{{ _('Nom SNMP original') }}</label>
         <input class="form-input" type="text" id="rename-orig-label" readonly
                style="opacity:.5;cursor:default">
       </div>
       <div class="form-group">
-        <label class="form-label">Alias personnalisé</label>
+        <label class="form-label">{{ _('Alias personnalisé') }}</label>
         <input class="form-input" type="text" id="rename-alias-input"
-               placeholder="ex : WAN Fibre — laisser vide pour réinitialiser">
+               placeholder="{{ _('ex : WAN Fibre — laisser vide pour réinitialiser') }}">
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn" onclick="closeRenameModal()">Annuler</button>
+      <button class="btn" onclick="closeRenameModal()">{{ _('Annuler') }}</button>
       <button class="btn btn--primary" id="btn-save-rename">
-        <i class="fa-solid fa-floppy-disk"></i> Enregistrer
+        <i class="fa-solid fa-floppy-disk"></i> {{ _('Enregistrer') }}
       </button>
     </div>
   </div>
@@ -274,7 +274,7 @@ document.getElementById('btn-save-rename')?.addEventListener('click', () => {
         }
       }
       closeRenameModal();
-      showToast(alias ? `Alias "${alias}" enregistré` : 'Alias réinitialisé', 'success');
+      showToast(alias ? `{{ _('Alias') }} "${alias}" {{ _('enregistré') }}` : '{{ _("Alias réinitialisé") }}', 'success');
     } else {
       showToast('Erreur lors de la sauvegarde', 'error');
     }

@@ -1,25 +1,25 @@
 {% extends "base.html" %}
-{% block title %}Historique 30j{% endblock %}
+{% block title %}{{ _('Historique 30j') }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1 class="page-title"><i class="fa-solid fa-clock-rotate-left"></i> Historique — 30 jours glissants</h1>
-  <span class="page-subtitle">Données agrégées par heure</span>
+  <h1 class="page-title"><i class="fa-solid fa-clock-rotate-left"></i> {{ _('Historique — 30 jours glissants') }}</h1>
+  <span class="page-subtitle">{{ _('Données agrégées par heure') }}</span>
 </div>
 
 <div class="toolbar">
-  <span class="toolbar__label">Période :</span>
+  <span class="toolbar__label">{{ _('Période :') }}</span>
   <div class="btn-group">
-    <button class="btn-period btn-period--active" data-days="7">7j</button>
-    <button class="btn-period" data-days="14">14j</button>
-    <button class="btn-period" data-days="30">30j</button>
+    <button class="btn-period btn-period--active" data-days="7">{{ _('7j') }}</button>
+    <button class="btn-period" data-days="14">{{ _('14j') }}</button>
+    <button class="btn-period" data-days="30">{{ _('30j') }}</button>
   </div>
 </div>
 
 <!-- CPU historique -->
 <div class="card mt-4">
   <div class="card__header">
-    <span><i class="fa-solid fa-microchip"></i> CPU — Moyenne &amp; Maximum</span>
+    <span><i class="fa-solid fa-microchip"></i> {{ _('CPU — Moyenne & Maximum') }}</span>
   </div>
   <div class="card__body">
     <canvas id="chart-hist-cpu" height="180"></canvas>
@@ -29,7 +29,7 @@
 <!-- Mémoire historique -->
 <div class="card mt-4">
   <div class="card__header">
-    <span><i class="fa-solid fa-memory"></i> Mémoire — Moyenne &amp; Maximum</span>
+    <span><i class="fa-solid fa-memory"></i> {{ _('Mémoire — Moyenne & Maximum') }}</span>
   </div>
   <div class="card__body">
     <canvas id="chart-hist-mem" height="180"></canvas>
@@ -39,9 +39,9 @@
 <!-- Trafic interfaces historique -->
 <div class="card mt-4">
   <div class="card__header">
-    <span><i class="fa-solid fa-diagram-project"></i> Trafic interface</span>
+    <span><i class="fa-solid fa-diagram-project"></i> {{ _('Trafic interface') }}</span>
     <select class="select-dark" id="hist-if-select">
-      <option value="">— Sélectionner une interface —</option>
+      <option value="">{{ _('— Sélectionner une interface —') }}</option>
     </select>
   </div>
   <div class="card__body">

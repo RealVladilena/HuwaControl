@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ current_lang }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Connexion — HuwaControl</title>
+  <title>{{ _('Connexion — HuwaControl') }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
@@ -201,7 +201,7 @@
     {% if wait_secs and wait_secs > 0 %}
     <div class="login-lockout" id="lockout-banner">
       <i class="fa-solid fa-clock"></i>
-      <span>Trop de tentatives — réessayez dans <strong id="countdown">{{ wait_secs }}</strong>s</span>
+      <span>{{ _('Trop de tentatives — réessayez dans') }} <strong id="countdown">{{ wait_secs }}</strong>s</span>
     </div>
     {% elif error %}
     <div class="login-error">
@@ -213,7 +213,7 @@
     <!-- Formulaire -->
     <form method="POST" action="/login" autocomplete="on" id="login-form">
       <div class="login-field">
-        <label class="login-field__label" for="username">Identifiant</label>
+        <label class="login-field__label" for="username">{{ _('Identifiant') }}</label>
         <div class="login-field__wrap">
           <i class="fa-solid fa-user login-field__icon"></i>
           <input class="login-field__input" type="text" id="username" name="username"
@@ -223,7 +223,7 @@
       </div>
 
       <div class="login-field">
-        <label class="login-field__label" for="password">Mot de passe</label>
+        <label class="login-field__label" for="password">{{ _('Mot de passe') }}</label>
         <div class="login-field__wrap">
           <i class="fa-solid fa-lock login-field__icon"></i>
           <input class="login-field__input" type="password" id="password" name="password"
@@ -238,7 +238,7 @@
       <button class="login-btn" type="submit" id="login-btn"
               {% if wait_secs and wait_secs > 0 %}disabled{% endif %}>
         <i class="fa-solid fa-right-to-bracket"></i>
-        Se connecter
+        {{ _('Se connecter') }}
       </button>
     </form>
 
@@ -246,10 +246,16 @@
 
   <div class="login-footer">
     <i class="fa-solid fa-shield-halved dot"></i>
-    <span>Session chiffrée</span>
+    <span>{{ _('Session chiffrée') }}</span>
     <span style="margin:0 4px">·</span>
     <i class="fa-solid fa-lock dot"></i>
-    <span>Accès restreint</span>
+    <span>{{ _('Accès restreint') }}</span>
+
+    <!-- Language switcher on login page -->
+    <span style="margin:0 8px">·</span>
+    <a href="{{ url_for('set_lang', lang='fr') }}" style="color:{% if current_lang=='fr' %}#cc0000{% else %}#3a3a3a{% endif %};text-decoration:none;font-weight:600;font-size:.73rem">FR</a>
+    <span style="color:#3a3a3a;margin:0 3px">|</span>
+    <a href="{{ url_for('set_lang', lang='en') }}" style="color:{% if current_lang=='en' %}#cc0000{% else %}#3a3a3a{% endif %};text-decoration:none;font-weight:600;font-size:.73rem">EN</a>
   </div>
 </div>
 

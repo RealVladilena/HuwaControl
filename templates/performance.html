@@ -1,20 +1,20 @@
 {% extends "base.html" %}
-{% block title %}Performance{% endblock %}
+{% block title %}{{ _('Performance système') }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1 class="page-title"><i class="fa-solid fa-chart-area"></i> Performance système</h1>
-  <span class="page-subtitle">CPU, mémoire et température</span>
+  <h1 class="page-title"><i class="fa-solid fa-chart-area"></i> {{ _('Performance système') }}</h1>
+  <span class="page-subtitle">{{ _('CPU, mémoire et température') }}</span>
 </div>
 
 <div class="toolbar">
-  <span class="toolbar__label">Période :</span>
+  <span class="toolbar__label">{{ _('Période :') }}</span>
   <div class="btn-group" id="period-group">
     <button class="btn-period btn-period--active" data-hours="1">1h</button>
     <button class="btn-period" data-hours="6">6h</button>
     <button class="btn-period" data-hours="24">24h</button>
-    <button class="btn-period" data-days="7">7j</button>
-    <button class="btn-period" data-days="30">30j</button>
+    <button class="btn-period" data-days="7">{{ _('7j') }}</button>
+    <button class="btn-period" data-days="30">{{ _('30j') }}</button>
   </div>
   <a href="/api/export/performance" class="btn btn--ghost" style="font-size:12px;padding:4px 10px;margin-left:auto">
     <i class="fa-solid fa-file-csv"></i> CSV
@@ -24,11 +24,11 @@
 <!-- CPU -->
 <div class="card mt-4">
   <div class="card__header">
-    <span><i class="fa-solid fa-microchip"></i> CPU Usage (%)</span>
+    <span><i class="fa-solid fa-microchip"></i> {{ _('CPU Usage (%)') }}</span>
     <div class="card__header-stats">
-      <span class="stat-pill stat-pill--red">Actuel : <b id="cpu-now">—</b></span>
-      <span class="stat-pill">Max : <b id="cpu-max">—</b></span>
-      <span class="stat-pill">Moy : <b id="cpu-avg">—</b></span>
+      <span class="stat-pill stat-pill--red">{{ _('Actuel :') }} <b id="cpu-now">—</b></span>
+      <span class="stat-pill">{{ _('Max :') }} <b id="cpu-max">—</b></span>
+      <span class="stat-pill">{{ _('Moy :') }} <b id="cpu-avg">—</b></span>
     </div>
   </div>
   <div class="card__body">
@@ -39,11 +39,11 @@
 <!-- Mémoire -->
 <div class="card mt-4">
   <div class="card__header">
-    <span><i class="fa-solid fa-memory"></i> Mémoire Usage (%)</span>
+    <span><i class="fa-solid fa-memory"></i> {{ _('Mémoire Usage (%)') }}</span>
     <div class="card__header-stats">
-      <span class="stat-pill stat-pill--orange">Actuel : <b id="mem-now">—</b></span>
-      <span class="stat-pill">Max : <b id="mem-max">—</b></span>
-      <span class="stat-pill">Moy : <b id="mem-avg">—</b></span>
+      <span class="stat-pill stat-pill--orange">{{ _('Actuel :') }} <b id="mem-now">—</b></span>
+      <span class="stat-pill">{{ _('Max :') }} <b id="mem-max">—</b></span>
+      <span class="stat-pill">{{ _('Moy :') }} <b id="mem-avg">—</b></span>
     </div>
   </div>
   <div class="card__body">
@@ -54,10 +54,10 @@
 <!-- Température -->
 <div class="card mt-4">
   <div class="card__header">
-    <span><i class="fa-solid fa-thermometer-half"></i> Température (°C)</span>
+    <span><i class="fa-solid fa-thermometer-half"></i> {{ _('Température (°C)') }}</span>
     <div class="card__header-stats">
-      <span class="stat-pill stat-pill--blue">Actuel : <b id="temp-now">—</b></span>
-      <span class="stat-pill">Max : <b id="temp-max">—</b></span>
+      <span class="stat-pill stat-pill--blue">{{ _('Actuel :') }} <b id="temp-now">—</b></span>
+      <span class="stat-pill">{{ _('Max :') }} <b id="temp-max">—</b></span>
     </div>
   </div>
   <div class="card__body">
