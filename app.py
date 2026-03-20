@@ -760,6 +760,19 @@ def api_interfaces():
     return jsonify(result)
 
 
+@app.route("/api/lte")
+@login_required
+def api_lte():
+    rid = _rid()
+    if not rid:
+        return jsonify(None)
+    hours = request.args.get("hours", 1, type=int)
+    latest  = db.get_lte_latest(rid)
+    history = db.get_lte_history(rid, hours=hours)
+    radios  = db.get_wifi_radio_latest(rid)
+    return jsonify({"latest": latest, "history": history, "wifi_radios": radios})
+
+
 @app.route("/api/interfaces/<int:if_index>/bps")
 @login_required
 def api_interface_bps(if_index):

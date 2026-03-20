@@ -50,6 +50,22 @@ OID_WLAN_STA_ENTRY = "1.3.6.1.4.1.2011.6.139.13.3.1.1"  # hwWlanApStaInfoEntry
 OID_WLAN_STA_RSSI  = "1.3.6.1.4.1.2011.6.139.13.3.1.1.9"
 OID_WLAN_STA_SSID  = "1.3.6.1.4.1.2011.6.139.13.3.1.1.4"
 
+# ─── Huawei LTE / Cellular MIB ───────────────────────────────────────────────
+OID_LTE_BASE        = "1.3.6.1.4.1.2011.6.144.1.2.1"
+OID_LTE_RSSI        = "1.3.6.1.4.1.2011.6.144.1.2.1.5"   # hwCellularRSSI (dBm)
+OID_LTE_RSRP        = "1.3.6.1.4.1.2011.6.144.1.2.1.18"  # hwCellularRSRP (dBm)
+OID_LTE_RSRQ        = "1.3.6.1.4.1.2011.6.144.1.2.1.19"  # hwCellularRSRQ (dB)
+OID_LTE_SINR        = "1.3.6.1.4.1.2011.6.144.1.2.1.20"  # hwCellularSINR (dB)
+OID_LTE_OPERATOR    = "1.3.6.1.4.1.2011.6.144.1.2.1.4"   # hwCellularOperatorName
+OID_LTE_ACCESS_MODE = "1.3.6.1.4.1.2011.6.144.1.2.1.3"   # hwCellularAccessMode (LTE/5G/…)
+OID_LTE_SIM_STATUS  = "1.3.6.1.4.1.2011.6.144.1.2.1.7"   # hwCellularSimStatus
+
+# ─── Huawei WiFi Radio MIB ────────────────────────────────────────────────────
+OID_WLAN_RADIO_TABLE  = "1.3.6.1.4.1.2011.6.139.12.1.1"  # hwWlanRadioInfoTable
+OID_WLAN_RADIO_CHAN   = "1.3.6.1.4.1.2011.6.139.12.1.1.6"  # hwWlanRadioChannel
+OID_WLAN_RADIO_POWER  = "1.3.6.1.4.1.2011.6.139.12.1.1.7"  # hwWlanRadioTxPower (dBm)
+OID_WLAN_RADIO_MODE   = "1.3.6.1.4.1.2011.6.139.12.1.1.3"  # hwWlanRadioWorkMode (2.4G/5G)
+
 # ─── Table de routage (ipRouteTable — RFC 1213) ───────────────────────────────
 OID_ROUTE_DEST    = "1.3.6.1.2.1.4.21.1.1"   # ipRouteDest
 OID_ROUTE_MASK    = "1.3.6.1.2.1.4.21.1.11"  # ipRouteMask

@@ -7,6 +7,209 @@
   <span class="page-subtitle">{{ _('Trafic par interface — graphiques en temps réel') }}</span>
 </div>
 
+<!-- ── Panel routeur ──────────────────────────────────────────────────────── -->
+<div class="card" id="router-panel-card" style="margin-bottom:1rem;overflow:hidden">
+  <div class="card__header" style="padding-bottom:8px">
+    <span><i class="fa-solid fa-server" style="color:var(--red)"></i> {{ _('Panel routeur') }}</span>
+    <span id="panel-updated" style="font-size:.73rem;color:var(--txt-muted)"></span>
+  </div>
+  <div class="card__body" style="padding:0">
+
+    <!-- Face avant du routeur -->
+    <div id="router-face">
+
+      <!-- Bande noire supérieure avec les LEDs système -->
+      <div class="rp-top-strip">
+        <div class="rp-led-group">
+          <div class="rp-led-item" id="led-PWR">
+            <div class="rp-led rp-led--green"></div>
+            <span>PWR</span>
+          </div>
+          <div class="rp-led-item" id="led-SYS">
+            <div class="rp-led rp-led--unknown"></div>
+            <span>SYS</span>
+          </div>
+          <div class="rp-led-item" id="led-USB">
+            <div class="rp-led rp-led--off"></div>
+            <span>USB</span>
+          </div>
+          <div class="rp-led-item" id="led-INET">
+            <div class="rp-led rp-led--unknown"></div>
+            <span>INET</span>
+          </div>
+          <div class="rp-led-item" id="led-CTRL">
+            <div class="rp-led rp-led--unknown"></div>
+            <span>CTRL</span>
+          </div>
+        </div>
+
+        <div class="rp-divider"></div>
+
+        <div class="rp-led-group">
+          <div class="rp-led-item" id="led-WWAN">
+            <div class="rp-led rp-led--unknown"></div>
+            <span>WWAN</span>
+          </div>
+          <div class="rp-led-item" id="led-RSSI">
+            <div class="rp-rssi">
+              <div class="rp-rssi-bar" id="rssi-b1"></div>
+              <div class="rp-rssi-bar" id="rssi-b2"></div>
+              <div class="rp-rssi-bar" id="rssi-b3"></div>
+              <div class="rp-rssi-bar" id="rssi-b4"></div>
+            </div>
+            <span>RSSI</span>
+          </div>
+          <div class="rp-led-item" id="led-GE8">
+            <div class="rp-led rp-led--unknown"></div>
+            <span>GE8</span>
+          </div>
+          <div class="rp-led-item" id="led-GE9">
+            <div class="rp-led rp-led--unknown"></div>
+            <span>GE9</span>
+          </div>
+        </div>
+
+        <div class="rp-divider rp-divider--large"></div>
+
+        <div class="rp-led-group">
+          {% for n in range(8) %}
+          <div class="rp-led-item" id="led-GE{{ n }}">
+            <div class="rp-led rp-led--unknown"></div>
+            <span>GE{{ n }}</span>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="rp-divider"></div>
+
+        <div class="rp-led-group">
+          <div class="rp-led-item" id="led-24G">
+            <div class="rp-led rp-led--unknown"></div>
+            <span>2.4G</span>
+          </div>
+          <div class="rp-led-item" id="led-5G">
+            <div class="rp-led rp-led--unknown"></div>
+            <span>5G</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bas du panel : branding -->
+      <div class="rp-bottom-strip">
+        <div>
+          <div class="rp-brand">HUAWEI</div>
+          <div class="rp-model">NetEngine AR600 Series</div>
+        </div>
+        <!-- Légende -->
+        <div class="rp-legend">
+          <span class="rp-legend-item"><span class="rp-led rp-led--green" style="width:8px;height:8px"></span> {{ _('Actif') }}</span>
+          <span class="rp-legend-item"><span class="rp-led rp-led--activity" style="width:8px;height:8px"></span> {{ _('Trafic') }}</span>
+          <span class="rp-legend-item"><span class="rp-led rp-led--off" style="width:8px;height:8px"></span> {{ _('Inactif') }}</span>
+          <span class="rp-legend-item"><span class="rp-led rp-led--error" style="width:8px;height:8px"></span> {{ _('Erreur') }}</span>
+        </div>
+      </div>
+
+    </div><!-- /router-face -->
+  </div>
+</div>
+
+<style>
+#router-face {
+  background: #222;
+  border-radius: 0 0 6px 6px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+.rp-top-strip {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 4px; padding: 10px 16px;
+  background: #2b2b2b;
+}
+.rp-led-group {
+  display: flex; align-items: flex-end; gap: 2px;
+}
+.rp-led-item {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 5px; padding: 2px 5px;
+  cursor: default;
+  position: relative;
+}
+.rp-led-item span {
+  font-size: .56rem; font-weight: 600; letter-spacing: .3px;
+  color: #888; text-transform: uppercase; white-space: nowrap;
+}
+.rp-led {
+  width: 9px; height: 9px; border-radius: 50%;
+  transition: background .4s, box-shadow .4s;
+  flex-shrink: 0;
+}
+/* États LED */
+.rp-led--green   { background: #00cc55; box-shadow: 0 0 6px rgba(0,204,85,0.7); }
+.rp-led--activity{ background: #00cc55; box-shadow: 0 0 8px rgba(0,204,85,0.9); animation: blink .5s ease-in-out infinite; }
+.rp-led--off     { background: #2a2a2a; box-shadow: none; border: 1px solid #333; }
+.rp-led--error   { background: #cc0000; box-shadow: 0 0 6px rgba(204,0,0,0.7); }
+.rp-led--unknown { background: #444; box-shadow: none; }
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .45; }
+}
+/* RSSI bars */
+.rp-rssi {
+  display: flex; align-items: flex-end; gap: 2px;
+  height: 14px;
+}
+.rp-rssi-bar {
+  width: 4px; border-radius: 1px;
+  background: #333;
+  transition: background .4s, height .4s;
+}
+#rssi-b1 { height: 4px; }
+#rssi-b2 { height: 7px; }
+#rssi-b3 { height: 10px; }
+#rssi-b4 { height: 14px; }
+.rp-rssi-bar.active { background: #00cc55; }
+.rp-rssi-bar.active-med { background: #e07000; }
+.rp-rssi-bar.active-low { background: #cc0000; }
+
+.rp-divider       { width: 1px; height: 32px; background: #444; margin: 0 6px; flex-shrink: 0; }
+.rp-divider--large{ width: 1px; height: 32px; background: #444; margin: 0 12px; flex-shrink: 0; }
+
+.rp-bottom-strip {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 16px;
+  background: #1e1e1e;
+}
+.rp-brand { font-size: .7rem; font-weight: 700; color: #888; letter-spacing: 1px; }
+.rp-model { font-size: .62rem; color: #555; letter-spacing: .3px; margin-top: 1px; }
+.rp-legend {
+  display: flex; align-items: center; gap: 12px;
+  flex-wrap: wrap; justify-content: flex-end;
+}
+.rp-legend-item {
+  display: flex; align-items: center; gap: 5px;
+  font-size: .65rem; color: #555;
+}
+
+/* Tooltip */
+.rp-led-item:hover::after {
+  content: attr(data-tooltip);
+  position: absolute; bottom: 100%; left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  background: #111; border: 1px solid #333;
+  border-radius: 5px; padding: 4px 8px;
+  font-size: .72rem; color: #ccc; white-space: nowrap;
+  pointer-events: none; z-index: 10;
+}
+
+@media (max-width: 600px) {
+  .rp-top-strip { gap: 2px; padding: 8px 10px; }
+  .rp-led-item { padding: 2px 3px; }
+  .rp-led-item span { font-size: .5rem; }
+  .rp-led { width: 7px; height: 7px; }
+  .rp-divider, .rp-divider--large { margin: 0 4px; }
+  .rp-legend { display: none; }
+}
+</style>
+
 <!-- Toolbar -->
 <div class="toolbar">
   <span class="toolbar__label">{{ _('Période :') }}</span>
@@ -134,6 +337,159 @@
 const ifaceIds = [{% for i in ifaces %}{{ i.if_index }},{% endfor %}];
 const charts   = {};
 let currentHours = 1;
+
+// ── Panel routeur ─────────────────────────────────────────────────────────────
+// Mapping : label LED → fragments de noms d'interface à matcher (insensible à la casse)
+const LED_MAP = {
+  'INET': ['wan', 'dialer', 'vlanif100', 'pppoe', 'ge0/0/8', 'ge0/0/9', 'ge8', 'ge9'],
+  'WWAN': ['cellular', 'lte', 'wwan', '4g', 'lte0'],
+  'GE0':  ['ge0/0/0', 'gigabitethernet0/0/0'],
+  'GE1':  ['ge0/0/1', 'gigabitethernet0/0/1'],
+  'GE2':  ['ge0/0/2', 'gigabitethernet0/0/2'],
+  'GE3':  ['ge0/0/3', 'gigabitethernet0/0/3'],
+  'GE4':  ['ge0/0/4', 'gigabitethernet0/0/4'],
+  'GE5':  ['ge0/0/5', 'gigabitethernet0/0/5'],
+  'GE6':  ['ge0/0/6', 'gigabitethernet0/0/6'],
+  'GE7':  ['ge0/0/7', 'gigabitethernet0/0/7'],
+  'GE8':  ['ge0/0/8', 'gigabitethernet0/0/8'],
+  'GE9':  ['ge0/0/9', 'gigabitethernet0/0/9'],
+  '24G':  ['wlan-radio0/0/0', 'radio0', 'wlan0', 'wifi0', '2.4g', 'wlan-bss0'],
+  '5G':   ['wlan-radio0/0/1', 'radio1', 'wlan1', 'wifi1', '5g',   'wlan-bss1'],
+  'CTRL': ['loopback', 'nve', 'tunnel'],
+};
+
+function matchLed(ifName) {
+  const n = ifName.toLowerCase();
+  for (const [led, patterns] of Object.entries(LED_MAP)) {
+    if (patterns.some(p => n.includes(p))) return led;
+  }
+  return null;
+}
+
+function setLed(id, state, tooltip) {
+  const item = document.getElementById('led-' + id);
+  if (!item) return;
+  const dot = item.querySelector('.rp-led');
+  if (!dot) return;
+  dot.className = 'rp-led rp-led--' + state;
+  if (tooltip) item.setAttribute('data-tooltip', tooltip);
+}
+
+function setRssi(level) {
+  // level: 0-4
+  const bars = ['rssi-b1','rssi-b2','rssi-b3','rssi-b4'];
+  bars.forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = 'rp-rssi-bar' + (i < level
+      ? (level <= 1 ? ' active-low' : level <= 2 ? ' active-med' : ' active')
+      : '');
+  });
+}
+
+function updatePanel(ifaces) {
+  // Réinitialiser tous les LEDs mappables
+  Object.keys(LED_MAP).forEach(id => setLed(id, 'off', ''));
+
+  // LEDs toujours verts (page accessible = routeur allumé)
+  setLed('PWR', 'green', 'Power ON');
+  setLed('SYS', 'green', 'System OK');
+
+  let wwanUp = false;
+
+  ifaces.forEach(iface => {
+    const name    = iface.if_name || '';
+    const status  = iface.if_status; // 1=up, 2=down
+    const inBps   = iface.in_bps  || 0;
+    const outBps  = iface.out_bps || 0;
+    const hasTraffic = (inBps + outBps) > 1000;
+    const label   = matchLed(name);
+    if (!label) return;
+
+    let state, tip;
+    if (status === 1) {
+      state = hasTraffic ? 'activity' : 'green';
+      tip   = name + ' — UP' + (hasTraffic
+        ? ` ↓${iface.in_bps_fmt} ↑${iface.out_bps_fmt}` : '');
+    } else if (status === 2) {
+      state = 'off';
+      tip   = name + ' — DOWN';
+    } else {
+      state = 'error';
+      tip   = name + ' — ERROR';
+    }
+    setLed(label, state, tip);
+
+    if (label === 'WWAN' && status === 1) wwanUp = true;
+  });
+
+  // RSSI : si WWAN actif on met un niveau fixe (SNMP ne retourne pas le RSSI directement ici)
+  if (wwanUp) setRssi(3); else setRssi(0);
+
+  // Timestamp
+  const now = new Date();
+  const ts  = now.toLocaleTimeString('fr-FR');
+  const el  = document.getElementById('panel-updated');
+  if (el) el.textContent = '{{ _("Mis à jour") }} ' + ts;
+}
+
+function loadPanel() {
+  fetch('/api/interfaces')
+    .then(r => r.json())
+    .then(updatePanel)
+    .catch(() => {});
+}
+
+function loadLtePanel() {
+  fetch('/api/lte')
+    .then(r => r.json())
+    .then(data => {
+      if (!data) return;
+      const lte    = data.latest;
+      const radios = data.wifi_radios || [];
+
+      // ── RSSI réel ────────────────────────────────────────────────
+      if (lte && lte.rssi !== null && lte.rssi !== undefined) {
+        const rssi = lte.rssi; // valeur négative en dBm, ex: -75
+        let bars = 0;
+        if      (rssi >= -65) bars = 4;
+        else if (rssi >= -75) bars = 3;
+        else if (rssi >= -85) bars = 2;
+        else if (rssi >= -95) bars = 1;
+        setRssi(bars);
+
+        // Tooltip WWAN enrichi
+        const wwan = document.getElementById('led-WWAN');
+        if (wwan) {
+          const mode = lte.access_mode || '';
+          const op   = lte.operator   || '';
+          const rsrp = lte.rsrp !== null ? `RSRP ${lte.rsrp} dBm` : '';
+          const sinr = lte.sinr !== null ? `SINR ${lte.sinr} dB`  : '';
+          wwan.setAttribute('data-tooltip',
+            [op, mode, `RSSI ${rssi} dBm`, rsrp, sinr].filter(Boolean).join(' · ')
+          );
+        }
+      }
+
+      // ── WiFi radios ───────────────────────────────────────────────
+      radios.forEach(r => {
+        const is5g   = (r.mode || '').includes('ac') || (r.mode || '').includes('ax')
+                     || r.radio_index === 1;
+        const ledId  = is5g ? '5G' : '24G';
+        const tip    = `Radio ${r.radio_index} · Ch ${r.channel ?? '?'} · ${r.tx_power_dbm ?? '?'} dBm`;
+        const ledEl  = document.getElementById('led-' + ledId);
+        if (ledEl) ledEl.setAttribute('data-tooltip', tip);
+      });
+    })
+    .catch(() => {});
+}
+
+// Chargement initial + refresh
+loadPanel();
+loadLtePanel();
+setInterval(loadPanel,    10000);
+setInterval(loadLtePanel, 30000);
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Construire les charts
 function fmtBpsTip(ctx) {

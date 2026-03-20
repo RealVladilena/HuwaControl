@@ -656,6 +656,72 @@ def collect_routing_table(router: dict) -> list:
                   if r["dest"].count(".") == 3 else (0, 0, 0, 0))
 
 
+# ─── LTE / Cellular ───────────────────────────────────────────────────────────
+
+def collect_lte(router: dict) -> dict | None:
+    """Collecte les métriques LTE/4G/5G via Huawei hwCellularMIB.
+    Retourne None si le routeur n'a pas d'interface cellulaire."""
+    try:
+        rows = snmp_walk(router, config.OID_LTE_BASE)
+        if not rows:
+            return None
+
+        def _first(oid_base):
+            vals = [v for _, v in snmp_walk(router, oid_base)]
+            return vals[0] if vals else None
+
+        rssi        = _int(_first(config.OID_LTE_RSSI))
+        rsrp        = _int(_first(config.OID_LTE_RSRP))
+        rsrq        = _int(_first(config.OID_LTE_RSRQ))
+        sinr        = _int(_first(config.OID_LTE_SINR))
+        operator    = str(_first(config.OID_LTE_OPERATOR) or "")
+        access_mode = str(_first(config.OID_LTE_ACCESS_MODE) or "")
+        sim_status  = _int(_first(config.OID_LTE_SIM_STATUS))
+
+        if rssi is None and rsrp is None:
+            return None
+
+        return {
+            "rssi":        rssi,        # dBm  ex: -75
+            "rsrp":        rsrp,        # dBm  ex: -95
+            "rsrq":        rsrq,        # dB   ex: -10
+            "sinr":        sinr,        # dB   ex: 15
+            "operator":    operator,    # ex: "Orange"
+            "access_mode": access_mode, # ex: "LTE", "NR" (5G)
+            "sim_status":  sim_status,  # 1=présente/active
+        }
+    except Exception as e:
+        log.debug("[%s] collect_lte: %s", router["name"], e)
+        return None
+
+
+# ─── WiFi Radio ───────────────────────────────────────────────────────────────
+
+def collect_wifi_radio(router: dict) -> list:
+    """Collecte les infos par radio WiFi (canal, puissance TX).
+    Retourne une liste [{radio_index, channel, tx_power_dbm, mode}]."""
+    try:
+        channels = _walk_indexed(router, config.OID_WLAN_RADIO_CHAN)
+        powers   = _walk_indexed(router, config.OID_WLAN_RADIO_POWER)
+        modes    = _walk_indexed(router, config.OID_WLAN_RADIO_MODE)
+
+        if not channels:
+            return []
+
+        return [
+            {
+                "radio_index":   idx,
+                "channel":       _int(channels.get(idx)),
+                "tx_power_dbm":  _int(powers.get(idx)),
+                "mode":          str(modes.get(idx, "")),  # ex: "11bgn", "11ac"
+            }
+            for idx in sorted(channels.keys())
+        ]
+    except Exception as e:
+        log.debug("[%s] collect_wifi_radio: %s", router["name"], e)
+        return []
+
+
 # ─── Cycle complet ────────────────────────────────────────────────────────────
 
 def poll(router: dict) -> None:
@@ -672,6 +738,22 @@ def poll(router: dict) -> None:
         db.insert_bps(rid, bps)
 
         check_events(router, sys_data, ifaces, bps)
+
+        # LTE / Cellular (best-effort)
+        try:
+            lte = collect_lte(router)
+            if lte:
+                db.upsert_lte(rid, lte)
+        except Exception as _e:
+            log.debug("[%s] LTE collect error: %s", router["name"], _e)
+
+        # WiFi radio (best-effort)
+        try:
+            radios = collect_wifi_radio(router)
+            if radios:
+                db.upsert_wifi_radio(rid, radios)
+        except Exception as _e:
+            log.debug("[%s] WiFi radio collect error: %s", router["name"], _e)
 
         # ARP history (best-effort, ne bloque pas le poll en cas d'erreur)
         try:

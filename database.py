@@ -355,6 +355,40 @@ def init_db() -> None:
                 used       BOOLEAN NOT NULL DEFAULT false
             );
         """)
+        # LTE metrics
+        _cur(conn).execute("""
+            CREATE TABLE IF NOT EXISTS lte_metrics (
+                id          SERIAL PRIMARY KEY,
+                router_id   INTEGER NOT NULL REFERENCES routers(id) ON DELETE CASCADE,
+                ts          BIGINT  NOT NULL DEFAULT EXTRACT(EPOCH FROM NOW()),
+                rssi        INTEGER,
+                rsrp        INTEGER,
+                rsrq        INTEGER,
+                sinr        INTEGER,
+                operator    TEXT,
+                access_mode TEXT,
+                sim_status  INTEGER
+            );
+        """)
+        _cur(conn).execute(
+            "CREATE INDEX IF NOT EXISTS idx_lte_router_ts ON lte_metrics(router_id, ts DESC)"
+        )
+
+        # WiFi radio metrics
+        _cur(conn).execute("""
+            CREATE TABLE IF NOT EXISTS wifi_radio (
+                id           SERIAL PRIMARY KEY,
+                router_id    INTEGER NOT NULL REFERENCES routers(id) ON DELETE CASCADE,
+                ts           BIGINT  NOT NULL DEFAULT EXTRACT(EPOCH FROM NOW()),
+                radio_index  INTEGER NOT NULL,
+                channel      INTEGER,
+                tx_power_dbm INTEGER,
+                mode         TEXT
+            );
+        """)
+        _cur(conn).execute(
+            "CREATE INDEX IF NOT EXISTS idx_wifiradio_router ON wifi_radio(router_id, ts DESC)"
+        )
     log.info("Schéma DB initialisé")
 
 
@@ -1231,6 +1265,79 @@ def ack_all_events(router_id: int | None, username: str) -> int:
 
 
 # ─── ARP historique ───────────────────────────────────────────────────────────
+
+def upsert_lte(router_id: int, data: dict) -> None:
+    """Insère les métriques LTE (1 ligne par poll)."""
+    now = int(time.time())
+    with get_db() as conn:
+        _cur(conn).execute("""
+            INSERT INTO lte_metrics
+                (router_id, ts, rssi, rsrp, rsrq, sinr, operator, access_mode, sim_status)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        """, (
+            router_id, now,
+            data.get("rssi"), data.get("rsrp"), data.get("rsrq"), data.get("sinr"),
+            data.get("operator"), data.get("access_mode"), data.get("sim_status"),
+        ))
+
+
+def get_lte_latest(router_id: int) -> dict | None:
+    """Retourne la dernière mesure LTE pour un routeur."""
+    with get_db() as conn:
+        cur = _cur(conn)
+        cur.execute("""
+            SELECT * FROM lte_metrics
+            WHERE router_id = %s
+            ORDER BY ts DESC LIMIT 1
+        """, (router_id,))
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def get_lte_history(router_id: int, hours: int = 24) -> list:
+    """Retourne l'historique RSSI/RSRP sur N heures."""
+    since = int(time.time()) - hours * 3600
+    with get_db() as conn:
+        cur = _cur(conn)
+        cur.execute("""
+            SELECT ts, rssi, rsrp, rsrq, sinr, operator, access_mode
+            FROM lte_metrics
+            WHERE router_id = %s AND ts >= %s
+            ORDER BY ts ASC
+        """, (router_id, since))
+        return [dict(r) for r in cur.fetchall()]
+
+
+def upsert_wifi_radio(router_id: int, radios: list) -> None:
+    """Insère les métriques radio WiFi (canal, puissance)."""
+    if not radios:
+        return
+    now = int(time.time())
+    with get_db() as conn:
+        for r in radios:
+            _cur(conn).execute("""
+                INSERT INTO wifi_radio (router_id, ts, radio_index, channel, tx_power_dbm, mode)
+                VALUES (%s,%s,%s,%s,%s,%s)
+            """, (
+                router_id, now,
+                r.get("radio_index"), r.get("channel"),
+                r.get("tx_power_dbm"), r.get("mode"),
+            ))
+
+
+def get_wifi_radio_latest(router_id: int) -> list:
+    """Retourne les dernières infos radio (1 ligne par radio index)."""
+    with get_db() as conn:
+        cur = _cur(conn)
+        cur.execute("""
+            SELECT DISTINCT ON (radio_index)
+                radio_index, channel, tx_power_dbm, mode, ts
+            FROM wifi_radio
+            WHERE router_id = %s
+            ORDER BY radio_index, ts DESC
+        """, (router_id,))
+        return [dict(r) for r in cur.fetchall()]
+
 
 def upsert_arp(router_id: int, entries: list) -> None:
     """Insère ou met à jour l'historique ARP (first_seen conservé, ip + last_seen mis à jour)."""
