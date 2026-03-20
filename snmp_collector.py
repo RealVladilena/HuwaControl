@@ -3,6 +3,7 @@ Collecteur SNMP multi-routeurs pour HuwaControl.
 Chaque routeur est un dict issu de la table `routers`.
 """
 import logging
+import re
 import time
 
 from pysnmp.hlapi import (
@@ -310,6 +311,16 @@ def collect_ike_sas(router: dict) -> list:
     ]
 
 
+# ─── Helpers firmware ────────────────────────────────────────────────────────
+
+def _parse_fw_version(sys_descr: str) -> str | None:
+    """Extrait la version VRP Huawei depuis sysDescr.
+    Ex: 'Version 5.170 (AR651W V200R021C10SPC600)' → 'V200R021C10SPC600'
+    """
+    m = re.search(r'(V\d{3}R\d+C\d+(?:SPC\d+)?)', sys_descr or '')
+    return m.group(1) if m else None
+
+
 # ─── Détection événements & notifications ────────────────────────────────────
 
 def _notify(webhooks: list, level: str, title: str, desc: str,
@@ -383,8 +394,12 @@ def check_events(router: dict, sys_data: dict,
             if status == 1:
                 title = f"Interface UP : {display}"
                 desc  = f"L'interface **{display}** est revenue en ligne sur **{rname}**."
+                fields = [{"name": "Routeur",   "value": rname, "inline": True},
+                          {"name": "Interface", "value": name,  "inline": True}]
+                if alias:
+                    fields.append({"name": "Alias", "value": alias, "inline": True})
                 db.insert_event(rid, "info", "interface", title, desc)
-                _notify(webhooks, "success", title, desc, None, rname)
+                _notify(webhooks, "info", title, desc, fields, rname)
             else:
                 title = f"Interface DOWN : {display}"
                 desc  = f"L'interface **{display}** est passée hors ligne sur **{rname}**."
@@ -454,6 +469,20 @@ def check_events(router: dict, sys_data: dict,
                          {"name": "Direction",  "value": direc,            "inline": True},
                          {"name": "Utilisation","value": f"{max_pct:.0f}%","inline": True}],
                         rname)
+
+    # 4. Firmware / version logicielle
+    fw_min = (router.get("min_firmware") or "").strip()
+    if fw_min:
+        fw_cur = _parse_fw_version(sys_data.get("sys_descr", ""))
+        if fw_cur and fw_cur != fw_min and _cooldown_ok(f"fw_{rid}"):
+            title = f"Firmware obsolète : {fw_cur}"
+            desc  = (f"Le routeur **{rname}** tourne sur **{fw_cur}**. "
+                     f"Version recommandée : **{fw_min}**.")
+            db.insert_event(rid, "warning", "firmware", title, desc)
+            _notify(webhooks, "warning", title, desc,
+                    [{"name": "Version actuelle",    "value": fw_cur, "inline": True},
+                     {"name": "Version recommandée", "value": fw_min, "inline": True}],
+                    rname)
 
 
 # ─── Table de routage ────────────────────────────────────────────────────────

@@ -135,6 +135,14 @@
         </div>
       </div>
       <div class="form-group">
+        <label class="form-label">
+          {{ _('Version firmware minimale') }}
+          <span class="txt-muted" style="font-weight:400"> — {{ _('alerte si différente') }}</span>
+        </label>
+        <input class="form-input" type="text" id="r-min-firmware"
+               placeholder="ex: V200R021C10SPC600" style="font-family:monospace">
+      </div>
+      <div class="form-group">
         <label class="form-check">
           <input type="checkbox" id="r-enabled" checked>
           <span>{{ _('Activer la collecte SNMP') }}</span>
@@ -438,6 +446,7 @@ function openAdd() {
   document.getElementById('r-v3-priv-pass').value = '';
   document.getElementById('r-poll').value         = '60';
   document.getElementById('r-retention').value    = '30';
+  document.getElementById('r-min-firmware').value = '';
   document.getElementById('r-enabled').checked    = true;
   onVersionChange(); onLevelChange();
   openModal('{{ _("Ajouter un routeur") }}');
@@ -461,6 +470,7 @@ function openEdit(id) {
       document.getElementById('r-v3-priv-pass').value = '';
       document.getElementById('r-poll').value         = r.poll_interval;
       document.getElementById('r-retention').value    = r.retention_days;
+      document.getElementById('r-min-firmware').value = r.min_firmware ?? '';
       document.getElementById('r-enabled').checked    = r.enabled;
       onVersionChange(); onLevelChange();
       openModal('{{ _("Modifier") }} — ' + r.name);
@@ -479,6 +489,7 @@ function saveRouter() {
     snmp_port:      parseInt(document.getElementById('r-port').value),
     poll_interval:  parseInt(document.getElementById('r-poll').value),
     retention_days: parseInt(document.getElementById('r-retention').value),
+    min_firmware:   document.getElementById('r-min-firmware').value.trim() || null,
     enabled:        document.getElementById('r-enabled').checked,
     snmp_v3_username:      document.getElementById('r-v3-username').value.trim(),
     snmp_v3_security_level:lvl,

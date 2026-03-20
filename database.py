@@ -86,7 +86,8 @@ def init_db() -> None:
                 poll_interval  INTEGER NOT NULL DEFAULT 60,
                 retention_days INTEGER NOT NULL DEFAULT 30,
                 enabled        BOOLEAN NOT NULL DEFAULT true,
-                created_at     BIGINT  NOT NULL
+                created_at     BIGINT  NOT NULL,
+                min_firmware   TEXT
             );
 
             CREATE TABLE IF NOT EXISTS system_metrics (
@@ -308,6 +309,7 @@ def init_db() -> None:
             ("interface_bps",   "in_pps",          "DOUBLE PRECISION"),
             ("interface_bps",   "out_pps",         "DOUBLE PRECISION"),
             ("system_metrics",  "fault_status",    "INTEGER"),
+            ("routers",         "min_firmware",    "TEXT"),
         ]:
             cur = _cur(conn)
             cur.execute(
@@ -588,7 +590,7 @@ def update_router(router_id: int, **fields) -> dict | None:
     allowed = {"name", "ip", "snmp_version", "snmp_community", "snmp_port",
                "snmp_v3_username", "snmp_v3_auth_protocol", "snmp_v3_auth_password",
                "snmp_v3_priv_protocol", "snmp_v3_priv_password", "snmp_v3_security_level",
-               "poll_interval", "retention_days", "enabled"}
+               "poll_interval", "retention_days", "enabled", "min_firmware"}
     updates = {k: v for k, v in fields.items() if k in allowed}
     if not updates:
         return get_router(router_id)
