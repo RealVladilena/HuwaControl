@@ -3,6 +3,7 @@ Collecteur SNMP multi-routeurs pour HuwaControl.
 Chaque routeur est un dict issu de la table `routers`.
 """
 import logging
+import re
 import time
 
 from pysnmp.hlapi import (
@@ -40,6 +41,17 @@ _prev_if_status: dict = {}
 # {alert_key: last_sent_timestamp}  — évite le spam de notifications
 _alert_cooldown: dict = {}
 COOLDOWN_S = 300   # 5 minutes entre deux mêmes alertes
+
+# {router_id: timestamp when metric first exceeded threshold}
+_high_cpu_since:  dict = {}
+_high_mem_since:  dict = {}
+
+# {(router_id, peer_ip): state_id}  — suivi BGP/OSPF
+_prev_bgp_states:  dict = {}
+_prev_ospf_states: dict = {}
+
+# {router_id: set of active WAN if_names}  — suivi failover WAN
+_prev_active_wan: dict = {}
 
 
 def _cooldown_ok(key: str) -> bool:
@@ -148,9 +160,10 @@ def collect_system(router: dict) -> dict:
         non_zero = [v for v in vals if v > 0]
         return max(non_zero) if non_zero else (vals[0] if vals else None)
 
-    data["cpu_usage"]   = _best(snmp_walk(router, config.OID_HW_CPU))
-    data["mem_usage"]   = _best(snmp_walk(router, config.OID_HW_MEM))
-    data["temperature"] = _best(snmp_walk(router, config.OID_HW_TEMP))
+    data["cpu_usage"]    = _best(snmp_walk(router, config.OID_HW_CPU))
+    data["mem_usage"]    = _best(snmp_walk(router, config.OID_HW_MEM))
+    data["temperature"]  = _best(snmp_walk(router, config.OID_HW_TEMP))
+    data["fault_status"] = _int(_best(snmp_walk(router, config.OID_HW_FAULT_STATUS)))
     return data
 
 
@@ -309,10 +322,32 @@ def collect_ike_sas(router: dict) -> list:
     ]
 
 
+# ─── Helpers firmware ────────────────────────────────────────────────────────
+
+def _parse_fw_version(sys_descr: str) -> str | None:
+    """Extrait la version VRP Huawei depuis sysDescr.
+    Ex: 'Version 5.170 (AR651W V200R021C10SPC600)' → 'V200R021C10SPC600'
+    """
+    m = re.search(r'(V\d{3}R\d+C\d+(?:SPC\d+)?)', sys_descr or '')
+    return m.group(1) if m else None
+
+
 # ─── Détection événements & notifications ────────────────────────────────────
 
 def _notify(webhooks: list, level: str, title: str, desc: str,
-            fields: list | None, router_name: str) -> None:
+            fields: list | None, router_name: str,
+            router_id: int | None = None) -> None:
+    # Bypass si routeur en maintenance
+    try:
+        rid_check = router_id
+        if rid_check is None:
+            # Tente de retrouver le router_id depuis le nom
+            pass
+        if rid_check is not None and db.is_in_maintenance(rid_check):
+            log.debug("Notification supprimée (maintenance) : %s", title)
+            return
+    except Exception:
+        pass
     settings = db.get_settings()
 
     # Discord
@@ -382,8 +417,12 @@ def check_events(router: dict, sys_data: dict,
             if status == 1:
                 title = f"Interface UP : {display}"
                 desc  = f"L'interface **{display}** est revenue en ligne sur **{rname}**."
+                fields = [{"name": "Routeur",   "value": rname, "inline": True},
+                          {"name": "Interface", "value": name,  "inline": True}]
+                if alias:
+                    fields.append({"name": "Alias", "value": alias, "inline": True})
                 db.insert_event(rid, "info", "interface", title, desc)
-                _notify(webhooks, "success", title, desc, None, rname)
+                _notify(webhooks, "info", title, desc, fields, rname)
             else:
                 title = f"Interface DOWN : {display}"
                 desc  = f"L'interface **{display}** est passée hors ligne sur **{rname}**."
@@ -453,6 +492,171 @@ def check_events(router: dict, sys_data: dict,
                          {"name": "Direction",  "value": direc,            "inline": True},
                          {"name": "Utilisation","value": f"{max_pct:.0f}%","inline": True}],
                         rname)
+
+    # 4. Firmware / version logicielle
+    fw_min = (router.get("min_firmware") or "").strip()
+    if fw_min:
+        fw_cur = _parse_fw_version(sys_data.get("sys_descr", ""))
+        if fw_cur and fw_cur != fw_min and _cooldown_ok(f"fw_{rid}"):
+            title = f"Firmware obsolète : {fw_cur}"
+            desc  = (f"Le routeur **{rname}** tourne sur **{fw_cur}**. "
+                     f"Version recommandée : **{fw_min}**.")
+            db.insert_event(rid, "warning", "firmware", title, desc)
+            _notify(webhooks, "warning", title, desc,
+                    [{"name": "Version actuelle",    "value": fw_cur, "inline": True},
+                     {"name": "Version recommandée", "value": fw_min, "inline": True}],
+                    rname)
+
+    # 5. CPU soutenu élevé
+    cpu_thresh = float(settings.get("alert_cpu_warn", 85))
+    cpu_usage  = sys_data.get("cpu_usage")
+    if cpu_usage is not None:
+        if cpu_usage >= cpu_thresh:
+            if rid not in _high_cpu_since:
+                _high_cpu_since[rid] = time.time()
+            elif time.time() - _high_cpu_since[rid] >= 300 and _cooldown_ok(f"cpu_high_{rid}"):
+                title = f"CPU soutenu élevé : {cpu_usage:.0f}%"
+                desc  = (f"🔥 CPU de **{rname}** à **{cpu_usage:.0f}%** "
+                         f"depuis plus de 5 min (seuil : {cpu_thresh:.0f}%).")
+                db.insert_event(rid, "warning", "system", title, desc)
+                _notify(webhooks, "warning", title, desc,
+                        [{"name": "CPU",   "value": f"{cpu_usage:.0f}%",  "inline": True},
+                         {"name": "Seuil", "value": f"{cpu_thresh:.0f}%", "inline": True}],
+                        rname)
+        else:
+            _high_cpu_since.pop(rid, None)
+
+    # 6. Mémoire soutenue élevée
+    mem_thresh = float(settings.get("alert_mem_warn", 90))
+    mem_usage  = sys_data.get("mem_usage")
+    if mem_usage is not None:
+        if mem_usage >= mem_thresh:
+            if rid not in _high_mem_since:
+                _high_mem_since[rid] = time.time()
+            elif time.time() - _high_mem_since[rid] >= 300 and _cooldown_ok(f"mem_high_{rid}"):
+                title = f"Mémoire soutenue élevée : {mem_usage:.0f}%"
+                desc  = (f"💾 Mémoire de **{rname}** à **{mem_usage:.0f}%** "
+                         f"depuis plus de 5 min (seuil : {mem_thresh:.0f}%).")
+                db.insert_event(rid, "warning", "system", title, desc)
+                _notify(webhooks, "warning", title, desc,
+                        [{"name": "Mémoire", "value": f"{mem_usage:.0f}%",  "inline": True},
+                         {"name": "Seuil",   "value": f"{mem_thresh:.0f}%", "inline": True}],
+                        rname)
+        else:
+            _high_mem_since.pop(rid, None)
+
+    # 7. Détection conflits IP (deux MACs différents pour la même IP)
+    try:
+        arp_entries = db.get_arp_history(rid, limit=1000)
+        ip_to_macs: dict = {}
+        for entry in arp_entries:
+            ip  = entry.get("ip", "")
+            mac = entry.get("mac", "")
+            if ip and mac:
+                ip_to_macs.setdefault(ip, set()).add(mac)
+        for ip, macs in ip_to_macs.items():
+            if len(macs) > 1:
+                key = f"ip_conflict_{rid}_{ip}"
+                if _cooldown_ok(key):
+                    macs_str = ", ".join(sorted(macs))
+                    title = f"Conflit IP détecté : {ip}"
+                    desc  = (f"🔀 L'IP **{ip}** est associée à plusieurs MACs sur **{rname}** : "
+                             f"{macs_str}")
+                    db.insert_event(rid, "warning", "system", title, desc)
+                    _notify(webhooks, "warning", title, desc,
+                            [{"name": "IP",   "value": ip,       "inline": True},
+                             {"name": "MACs", "value": macs_str, "inline": True}],
+                            rname)
+    except Exception as _e:
+        log.debug("[%s] IP conflict check error: %s", rname, _e)
+
+    # 8. WAN failover (changement d'interface WAN active)
+    try:
+        wan_keywords = ["wan", "dialer", "pppoe", "cellular", "wwan",
+                        "ge0/0/8", "ge0/0/9", "gigabitethernet0/0/8", "gigabitethernet0/0/9"]
+        cur_active_wan = set()
+        for iface in ifaces:
+            name_lc = (iface.get("if_name") or "").lower()
+            if iface.get("if_status") == 1 and any(k in name_lc for k in wan_keywords):
+                cur_active_wan.add(iface.get("if_name", ""))
+        prev_wan = _prev_active_wan.get(rid)
+        if prev_wan is not None and prev_wan != cur_active_wan:
+            lost = prev_wan - cur_active_wan
+            gained = cur_active_wan - prev_wan
+            if lost or gained:
+                key = f"wan_failover_{rid}"
+                if _cooldown_ok(key):
+                    parts = []
+                    if lost:
+                        parts.append(f"perdu : {', '.join(sorted(lost))}")
+                    if gained:
+                        parts.append(f"basculé vers : {', '.join(sorted(gained))}")
+                    title = f"Basculement WAN détecté — {rname}"
+                    desc  = f"🔄 Changement WAN sur **{rname}** : {' / '.join(parts)}."
+                    db.insert_event(rid, "warning", "interface", title, desc)
+                    _notify(webhooks, "warning", title, desc,
+                            [{"name": "Perdu",    "value": ", ".join(sorted(lost))    or "—", "inline": True},
+                             {"name": "Activé",   "value": ", ".join(sorted(gained))  or "—", "inline": True}],
+                            rname)
+        _prev_active_wan[rid] = cur_active_wan
+    except Exception as _e:
+        log.debug("[%s] WAN failover check error: %s", rname, _e)
+
+
+# ─── BGP / OSPF state-change alerts ──────────────────────────────────────────
+
+def _check_bgp_ospf(router: dict, webhooks: list) -> None:
+    rid   = router["id"]
+    rname = router["name"]
+
+    # BGP
+    try:
+        bgp_peers = collect_bgp_neighbors(router)
+        for peer in bgp_peers:
+            key      = (rid, peer["peer_ip"])
+            prev_sid = _prev_bgp_states.get(key)
+            cur_sid  = peer["state_id"]
+            if prev_sid is not None and prev_sid != cur_sid:
+                was_up  = prev_sid == 6
+                now_up  = cur_sid  == 6
+                level   = "info" if now_up else "warning"
+                icon    = "🟢" if now_up else "🟡"
+                title   = f"BGP {peer['peer_ip']} : {peer['state']}"
+                desc    = (f"{icon} Voisin BGP **{peer['peer_ip']}** sur **{rname}** "
+                           f"est passé à l'état **{peer['state']}**.")
+                db.insert_event(rid, level, "system", title, desc)
+                if _cooldown_ok(f"bgp_{rid}_{peer['peer_ip']}"):
+                    _notify(webhooks, level, title, desc,
+                            [{"name": "Voisin", "value": peer["peer_ip"], "inline": True},
+                             {"name": "État",   "value": peer["state"],   "inline": True}],
+                            rname)
+            _prev_bgp_states[key] = cur_sid
+    except Exception as _e:
+        log.debug("[%s] BGP check error: %s", rname, _e)
+
+    # OSPF
+    try:
+        ospf_nbrs = collect_ospf_neighbors(router)
+        for nbr in ospf_nbrs:
+            key      = (rid, nbr["nbr_ip"])
+            prev_sid = _prev_ospf_states.get(key)
+            cur_sid  = nbr["state_id"]
+            if prev_sid is not None and prev_sid != cur_sid:
+                now_full = cur_sid == 8
+                level    = "info" if now_full else "warning"
+                icon     = "🟢" if now_full else "🟡"
+                title    = f"OSPF {nbr['nbr_ip']} : {nbr['state']}"
+                desc     = (f"{icon} Voisin OSPF **{nbr['nbr_ip']}** sur **{rname}** "
+                            f"est passé à l'état **{nbr['state']}**.")
+                db.insert_event(rid, level, "system", title, desc)
+                if _cooldown_ok(f"ospf_{rid}_{nbr['nbr_ip']}"):
+                    _notify(webhooks, level, title, desc,
+                            [{"name": "Voisin", "value": nbr["nbr_ip"], "inline": True},
+                             {"name": "État",   "value": nbr["state"],  "inline": True}],
+                            rname)
+            _prev_ospf_states[key] = cur_sid
+    except Exception as _e:
+        log.debug("[%s] OSPF check error: %s", rname, _e)
 
 
 # ─── Table de routage ────────────────────────────────────────────────────────
@@ -610,6 +814,39 @@ def collect_dhcp_leases(router: dict) -> list:
     ]
 
 
+def collect_dhcp_pool_stats(router: dict) -> list:
+    """Retourne les stats d'utilisation des pools DHCP Huawei.
+    [{pool_name, total, used, idle, pct_used}]"""
+    pools: dict = {}
+    try:
+        for oid_str, val in snmp_walk(router, config.OID_HW_DHCP_POOL):
+            suffix = oid_str[len(config.OID_HW_DHCP_POOL):].lstrip(".")
+            parts  = suffix.split(".")
+            if len(parts) < 2:
+                continue
+            col = parts[0]
+            idx = ".".join(parts[1:])
+            entry = pools.setdefault(idx, {})
+            if   col == "3": entry["pool_name"] = str(val).strip()
+            elif col == "4": entry["total"]     = _int(val)
+            elif col == "5": entry["used"]      = _int(val)
+            elif col == "6": entry["idle"]      = _int(val)
+    except Exception:
+        return []
+    result = []
+    for v in pools.values():
+        total = v.get("total") or 0
+        used  = v.get("used")  or 0
+        result.append({
+            "pool_name": v.get("pool_name", "?"),
+            "total":     total,
+            "used":      used,
+            "idle":      v.get("idle"),
+            "pct_used":  round(used / total * 100, 1) if total > 0 else None,
+        })
+    return result
+
+
 def collect_routing_table(router: dict) -> list:
     """Retourne la table de routage IP via ipRouteTable (RFC 1213).
     Utilise le suffixe IP de l'OID comme clé, et prettyPrint/bytes pour décoder les IpAddress.
@@ -656,6 +893,72 @@ def collect_routing_table(router: dict) -> list:
                   if r["dest"].count(".") == 3 else (0, 0, 0, 0))
 
 
+# ─── LTE / Cellular ───────────────────────────────────────────────────────────
+
+def collect_lte(router: dict) -> dict | None:
+    """Collecte les métriques LTE/4G/5G via Huawei hwCellularMIB.
+    Retourne None si le routeur n'a pas d'interface cellulaire."""
+    try:
+        rows = snmp_walk(router, config.OID_LTE_BASE)
+        if not rows:
+            return None
+
+        def _first(oid_base):
+            vals = [v for _, v in snmp_walk(router, oid_base)]
+            return vals[0] if vals else None
+
+        rssi        = _int(_first(config.OID_LTE_RSSI))
+        rsrp        = _int(_first(config.OID_LTE_RSRP))
+        rsrq        = _int(_first(config.OID_LTE_RSRQ))
+        sinr        = _int(_first(config.OID_LTE_SINR))
+        operator    = str(_first(config.OID_LTE_OPERATOR) or "")
+        access_mode = str(_first(config.OID_LTE_ACCESS_MODE) or "")
+        sim_status  = _int(_first(config.OID_LTE_SIM_STATUS))
+
+        if rssi is None and rsrp is None:
+            return None
+
+        return {
+            "rssi":        rssi,        # dBm  ex: -75
+            "rsrp":        rsrp,        # dBm  ex: -95
+            "rsrq":        rsrq,        # dB   ex: -10
+            "sinr":        sinr,        # dB   ex: 15
+            "operator":    operator,    # ex: "Orange"
+            "access_mode": access_mode, # ex: "LTE", "NR" (5G)
+            "sim_status":  sim_status,  # 1=présente/active
+        }
+    except Exception as e:
+        log.debug("[%s] collect_lte: %s", router["name"], e)
+        return None
+
+
+# ─── WiFi Radio ───────────────────────────────────────────────────────────────
+
+def collect_wifi_radio(router: dict) -> list:
+    """Collecte les infos par radio WiFi (canal, puissance TX).
+    Retourne une liste [{radio_index, channel, tx_power_dbm, mode}]."""
+    try:
+        channels = _walk_indexed(router, config.OID_WLAN_RADIO_CHAN)
+        powers   = _walk_indexed(router, config.OID_WLAN_RADIO_POWER)
+        modes    = _walk_indexed(router, config.OID_WLAN_RADIO_MODE)
+
+        if not channels:
+            return []
+
+        return [
+            {
+                "radio_index":   idx,
+                "channel":       _int(channels.get(idx)),
+                "tx_power_dbm":  _int(powers.get(idx)),
+                "mode":          str(modes.get(idx, "")),  # ex: "11bgn", "11ac"
+            }
+            for idx in sorted(channels.keys())
+        ]
+    except Exception as e:
+        log.debug("[%s] collect_wifi_radio: %s", router["name"], e)
+        return []
+
+
 # ─── Cycle complet ────────────────────────────────────────────────────────────
 
 def poll(router: dict) -> None:
@@ -673,13 +976,122 @@ def poll(router: dict) -> None:
 
         check_events(router, sys_data, ifaces, bps)
 
-        # ARP history (best-effort, ne bloque pas le poll en cas d'erreur)
+        # BGP / OSPF state changes (best-effort)
+        try:
+            webhooks = db.get_discord_webhooks(enabled_only=True)
+            _check_bgp_ospf(router, webhooks)
+        except Exception as _e:
+            log.debug("[%s] BGP/OSPF check error: %s", router["name"], _e)
+
+        # LTE / Cellular (best-effort)
+        try:
+            lte = collect_lte(router)
+            if lte:
+                db.upsert_lte(rid, lte)
+        except Exception as _e:
+            log.debug("[%s] LTE collect error: %s", router["name"], _e)
+
+        # WiFi radio (best-effort)
+        try:
+            radios = collect_wifi_radio(router)
+            if radios:
+                db.upsert_wifi_radio(rid, radios)
+        except Exception as _e:
+            log.debug("[%s] WiFi radio collect error: %s", router["name"], _e)
+
+        # WiFi client history (best-effort)
+        try:
+            wifi_clients = collect_wifi_clients(router)
+            if wifi_clients:
+                db.insert_wifi_client_history(rid, wifi_clients)
+        except Exception as _e:
+            log.debug("[%s] WiFi client history error: %s", router["name"], _e)
+
+        # ARP history + nouveau MAC (best-effort)
         try:
             clients = collect_clients(router)
             if clients:
                 db.upsert_arp(rid, clients)
+            # Nouveaux MACs non-connus
+            new_macs = db.get_unalerted_new_macs(rid)
+            if new_macs:
+                wh_mac = db.get_discord_webhooks(enabled_only=True)
+                for entry in new_macs:
+                    title_mac = f"Nouveau client détecté : {entry['mac']}"
+                    desc_mac  = (f"🔍 Nouveau MAC **{entry['mac']}** (IP : {entry['ip']}) "
+                                 f"détecté sur **{router['name']}**.")
+                    db.insert_event(rid, "info", "system", title_mac, desc_mac)
+                    if _cooldown_ok(f"newmac_{rid}_{entry['mac']}"):
+                        _notify(wh_mac, "info", title_mac, desc_mac,
+                                [{"name": "MAC", "value": entry["mac"], "inline": True},
+                                 {"name": "IP",  "value": entry["ip"],  "inline": True}],
+                                router["name"], router_id=rid)
+                    db.mark_mac_alerted(rid, entry["mac"])
         except Exception as _e:
-            log.debug("[%s] ARP history error: %s", router["name"], _e)
+            log.debug("[%s] ARP/MAC check error: %s", router["name"], _e)
+
+        # WAN SLA — enregistrer l'état courant de chaque interface WAN
+        try:
+            wan_keywords = ["wan", "dialer", "pppoe", "cellular", "wwan",
+                            "ge0/0/8", "ge0/0/9", "gigabitethernet0/0/8", "gigabitethernet0/0/9"]
+            for iface in ifaces:
+                name_lc = (iface.get("if_name") or "").lower()
+                if any(k in name_lc for k in wan_keywords):
+                    db.insert_wan_sla(rid, iface["if_index"],
+                                      iface.get("if_name", ""),
+                                      iface.get("if_status") == 1)
+        except Exception as _e:
+            log.debug("[%s] WAN SLA error: %s", router["name"], _e)
+
+        # Totaux bande passante (best-effort)
+        try:
+            poll_interval = router.get("poll_interval", 60)
+            for brow in bps:
+                if brow.get("in_bps") is not None and brow.get("out_bps") is not None:
+                    in_delta  = int(brow["in_bps"]  * poll_interval / 8)
+                    out_delta = int(brow["out_bps"] * poll_interval / 8)
+                    db.accumulate_bandwidth(rid, brow["if_index"],
+                                            brow.get("if_name", ""),
+                                            in_delta, out_delta)
+        except Exception as _e:
+            log.debug("[%s] Bandwidth totals error: %s", router["name"], _e)
+
+        # OIDs personnalisés (best-effort)
+        try:
+            custom_polls = db.get_custom_oid_polls(rid, enabled_only=True)
+            for cp in custom_polls:
+                val = snmp_get(router, cp["oid"])
+                if val is not None:
+                    txt = str(val)
+                    try:
+                        num = float(val)
+                    except Exception:
+                        num = None
+                    db.insert_custom_oid_value(cp["id"], txt, num)
+        except Exception as _e:
+            log.debug("[%s] Custom OID poll error: %s", router["name"], _e)
+
+        # DHCP pool exhaustion check (best-effort)
+        try:
+            dhcp_warn_pct = float(db.get_settings().get("alert_dhcp_warn_pct", 80))
+            dhcp_pools    = collect_dhcp_pool_stats(router)
+            wh_dhcp       = db.get_discord_webhooks(enabled_only=True)
+            for pool in dhcp_pools:
+                pct = pool.get("pct_used")
+                if pct is not None and pct >= dhcp_warn_pct:
+                    key = f"dhcp_{rid}_{pool['pool_name']}"
+                    if _cooldown_ok(key):
+                        title = f"Pool DHCP saturé : {pool['pool_name']} ({pct:.0f}%)"
+                        desc  = (f"📦 Le pool DHCP **{pool['pool_name']}** sur **{router['name']}** "
+                                 f"est utilisé à **{pct:.0f}%** ({pool['used']}/{pool['total']} adresses).")
+                        db.insert_event(rid, "warning", "system", title, desc)
+                        _notify(wh_dhcp, "warning", title, desc,
+                                [{"name": "Pool",       "value": pool["pool_name"],     "inline": True},
+                                 {"name": "Utilisé",    "value": f"{pool['used']}/{pool['total']}", "inline": True},
+                                 {"name": "Saturation", "value": f"{pct:.0f}%",         "inline": True}],
+                                router["name"])
+        except Exception as _e:
+            log.debug("[%s] DHCP pool check error: %s", router["name"], _e)
 
         db.purge_old(rid, router.get("retention_days", 30))
         db.purge_events(days=router.get("retention_days", 30))

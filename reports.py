@@ -127,6 +127,98 @@ def build_report() -> dict:
     return {"title": title, "description": description, "fields": fields}
 
 
+def build_weekly_report() -> dict:
+    """Rapport hebdomadaire : agrège 7 jours de données."""
+    week_start = int(time.time()) - 7 * 86400
+    routers    = db.get_enabled_routers()
+
+    all_errors   = 0
+    all_warnings = 0
+    router_lines = []
+
+    for router in routers:
+        rid    = router["id"]
+        rname  = router["name"]
+        events = db.get_events(router_id=rid, limit=5000)
+        week_ev = [e for e in events if e["ts"] >= week_start]
+
+        errors   = sum(1 for e in week_ev if e["level"] == "error")
+        warnings = sum(1 for e in week_ev if e["level"] == "warning")
+        all_errors   += errors
+        all_warnings += warnings
+
+        ifaces = db.get_interfaces_latest(rid)
+        ifaces_up = sum(1 for i in ifaces if i.get("if_status") == 1)
+
+        # Totaux bande passante semaine
+        try:
+            bw_rows = db.get_bandwidth_totals(rid, period_type="daily", limit=7)
+            week_in  = sum(r.get("in_bytes",  0) for r in bw_rows)
+            week_out = sum(r.get("out_bytes", 0) for r in bw_rows)
+            bw_line  = f" — IN {_fmt_bps(week_in * 8 / 604800)} / OUT {_fmt_bps(week_out * 8 / 604800)} moy"
+        except Exception:
+            bw_line = ""
+
+        status_icon = "🟢" if errors == 0 and warnings == 0 else "🟡" if errors == 0 else "🔴"
+        line = (f"{status_icon} **{rname}** — {ifaces_up}/{len(ifaces)} ifaces UP"
+                f"{bw_line}\n  ⚠️ {warnings} alertes, 🚨 {errors} erreurs (7j)")
+        router_lines.append(line)
+
+    description = "\n".join(router_lines) if router_lines else "Aucun routeur actif."
+
+    # SLA ping 7j
+    ping_lines = []
+    try:
+        targets = db.get_ping_targets(enabled_only=True)
+        for t in targets:
+            sla = db.get_sla_stats(t["id"], hours=168)
+            if sla["sla"] is not None:
+                icon = "🟢" if sla["sla"] >= 99 else "🟡" if sla["sla"] >= 95 else "🔴"
+                ping_lines.append(f"{icon} **{t['label']}** — SLA {sla['sla']}% / RTT moy {sla['avg_rtt']}ms")
+    except Exception:
+        pass
+
+    if ping_lines:
+        description += "\n\n**SLA Ping 7j :**\n" + "\n".join(ping_lines)
+
+    fields = [
+        {"name": "Routeurs",       "value": str(len(routers)),    "inline": True},
+        {"name": "Alertes 7j",     "value": str(all_warnings),    "inline": True},
+        {"name": "Erreurs 7j",     "value": str(all_errors),      "inline": True},
+    ]
+    title = f"📋 Rapport hebdomadaire — semaine du {time.strftime('%d/%m/%Y', time.localtime(week_start))}"
+    return {"title": title, "description": description, "fields": fields}
+
+
+def send_weekly_report() -> None:
+    """Envoie le rapport hebdomadaire à tous les canaux de notification actifs."""
+    log.info("Génération du rapport hebdomadaire")
+    try:
+        webhooks = db.get_discord_webhooks(enabled_only=True)
+        tg_bots  = db.get_telegram_bots(enabled_only=True)
+        if not webhooks and not tg_bots:
+            return
+
+        report = build_weekly_report()
+
+        for wh in webhooks:
+            notifications.send_discord(
+                wh["url"], "info",
+                report["title"], report["description"],
+                fields=report["fields"], router_name=""
+            )
+
+        for bot in tg_bots:
+            notifications.send_telegram(
+                bot["bot_token"], bot["chat_id"],
+                "info", report["title"], report["description"], ""
+            )
+
+        log.info("Rapport hebdomadaire envoyé")
+    except Exception as e:
+        log.error("send_weekly_report: %s", e)
+
+
 def send_daily_report() -> None:
     """Envoie le rapport à tous les canaux de notification actifs."""
     log.info("Génération du rapport quotidien")

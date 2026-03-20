@@ -37,9 +37,10 @@ OID_IF_IN_PKT = "1.3.6.1.2.1.31.1.1.1.7"   # ifHCInUcastPkts  (64-bit)
 OID_IF_OUT_PKT= "1.3.6.1.2.1.31.1.1.1.11"  # ifHCOutUcastPkts (64-bit)
 
 # ─── OIDs Huawei spécifiques ─────────────────────────────────────────────────
-OID_HW_CPU  = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.5"
-OID_HW_MEM  = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.7"
-OID_HW_TEMP = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.11"
+OID_HW_CPU         = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.5"
+OID_HW_MEM         = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.7"
+OID_HW_TEMP        = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.11"
+OID_HW_FAULT_STATUS= "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.3"  # hwEntityFaultStatus (1=normal,2=warning,3=minor,4=major,5=critical)
 
 # ─── Table ARP (clients connectés) ───────────────────────────────────────────
 OID_ARP_MAC  = "1.3.6.1.2.1.4.22.1.2"   # ipNetToMediaPhysAddress
@@ -49,6 +50,22 @@ OID_ARP_TYPE = "1.3.6.1.2.1.4.22.1.4"   # ipNetToMediaType (3=dynamic)
 OID_WLAN_STA_ENTRY = "1.3.6.1.4.1.2011.6.139.13.3.1.1"  # hwWlanApStaInfoEntry
 OID_WLAN_STA_RSSI  = "1.3.6.1.4.1.2011.6.139.13.3.1.1.9"
 OID_WLAN_STA_SSID  = "1.3.6.1.4.1.2011.6.139.13.3.1.1.4"
+
+# ─── Huawei LTE / Cellular MIB ───────────────────────────────────────────────
+OID_LTE_BASE        = "1.3.6.1.4.1.2011.6.144.1.2.1"
+OID_LTE_RSSI        = "1.3.6.1.4.1.2011.6.144.1.2.1.5"   # hwCellularRSSI (dBm)
+OID_LTE_RSRP        = "1.3.6.1.4.1.2011.6.144.1.2.1.18"  # hwCellularRSRP (dBm)
+OID_LTE_RSRQ        = "1.3.6.1.4.1.2011.6.144.1.2.1.19"  # hwCellularRSRQ (dB)
+OID_LTE_SINR        = "1.3.6.1.4.1.2011.6.144.1.2.1.20"  # hwCellularSINR (dB)
+OID_LTE_OPERATOR    = "1.3.6.1.4.1.2011.6.144.1.2.1.4"   # hwCellularOperatorName
+OID_LTE_ACCESS_MODE = "1.3.6.1.4.1.2011.6.144.1.2.1.3"   # hwCellularAccessMode (LTE/5G/…)
+OID_LTE_SIM_STATUS  = "1.3.6.1.4.1.2011.6.144.1.2.1.7"   # hwCellularSimStatus
+
+# ─── Huawei WiFi Radio MIB ────────────────────────────────────────────────────
+OID_WLAN_RADIO_TABLE  = "1.3.6.1.4.1.2011.6.139.12.1.1"  # hwWlanRadioInfoTable
+OID_WLAN_RADIO_CHAN   = "1.3.6.1.4.1.2011.6.139.12.1.1.6"  # hwWlanRadioChannel
+OID_WLAN_RADIO_POWER  = "1.3.6.1.4.1.2011.6.139.12.1.1.7"  # hwWlanRadioTxPower (dBm)
+OID_WLAN_RADIO_MODE   = "1.3.6.1.4.1.2011.6.139.12.1.1.3"  # hwWlanRadioWorkMode (2.4G/5G)
 
 # ─── Table de routage (ipRouteTable — RFC 1213) ───────────────────────────────
 OID_ROUTE_DEST    = "1.3.6.1.2.1.4.21.1.1"   # ipRouteDest
@@ -82,6 +99,8 @@ OID_OSPF_NBR_EVENTS  = "1.3.6.1.2.1.14.10.1.9"
 # ─── DHCP Server Huawei ───────────────────────────────────────────────────────
 OID_HW_DHCP_LEASE    = "1.3.6.1.4.1.2011.6.8.1.5.1"   # hwDhcpServerStatClientLeaseTable
 # Colonnes : .1=MAC, .2=IP, .3=type(1=dynamic), .5=ttl_remaining_sec, .9=vrf
+OID_HW_DHCP_POOL     = "1.3.6.1.4.1.2011.6.8.1.1.1"   # hwDhcpServerPoolTable
+# Colonnes : .3=pool_name, .4=total_addrs, .5=used_addrs, .6=idle_addrs
 
 # ─── SNMP Trap standard OIDs ─────────────────────────────────────────────────
 OID_TRAP_SYSUPTIME   = "1.3.6.1.2.1.1.3.0"
@@ -95,5 +114,5 @@ SYSLOG_HOST_PORT = int(os.getenv("SYSLOG_HOST_PORT", "514"))    # port exposé (
 SNMP_TRAP_PORT   = int(os.getenv("SNMP_TRAP_PORT",   "1162"))
 
 # ─── Version ──────────────────────────────────────────────────────────────────
-APP_VERSION    = "2.2.0"
-APP_BUILD_DATE = "2026-03-19"
+APP_VERSION    = "2.3.0"
+APP_BUILD_DATE = "2026-03-20"

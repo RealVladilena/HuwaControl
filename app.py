@@ -760,6 +760,22 @@ def api_interfaces():
     return jsonify(result)
 
 
+@app.route("/api/lte")
+@login_required
+def api_lte():
+    rid = _rid()
+    if not rid:
+        return jsonify(None)
+    hours = request.args.get("hours", 1, type=int)
+    latest      = db.get_lte_latest(rid)
+    history     = db.get_lte_history(rid, hours=hours)
+    radios      = db.get_wifi_radio_latest(rid)
+    sys_latest   = db.get_latest_system(rid)
+    fault_status = sys_latest.get("fault_status") if sys_latest else None
+    return jsonify({"latest": latest, "history": history, "wifi_radios": radios,
+                    "fault_status": fault_status})
+
+
 @app.route("/api/interfaces/<int:if_index>/bps")
 @login_required
 def api_interface_bps(if_index):
@@ -1663,6 +1679,204 @@ def api_user_email(uid):
     return jsonify({"ok": True})
 
 
+# ─── API — Fenêtres de maintenance ────────────────────────────────────────────
+
+@app.route("/api/maintenance", methods=["GET"])
+@login_required
+def api_maintenance_list():
+    rid = request.args.get("router_id", type=int) or None
+    return jsonify(db.get_maintenance_windows(rid))
+
+
+@app.route("/api/maintenance", methods=["POST"])
+@login_required
+def api_maintenance_create():
+    if not current_user.is_admin:
+        return ("", 403)
+    d = request.json or {}
+    start_ts = d.get("start_ts")
+    end_ts   = d.get("end_ts")
+    if not start_ts or not end_ts:
+        return jsonify({"error": "start_ts et end_ts requis"}), 400
+    win = db.create_maintenance_window(
+        router_id=d.get("router_id"),
+        start_ts=int(start_ts),
+        end_ts=int(end_ts),
+        description=d.get("description", ""),
+        created_by=current_user.username,
+    )
+    db.add_audit(current_user.username, "maintenance_create",
+                 f"router={d.get('router_id')} {d.get('description', '')}",
+                 ip=request.remote_addr)
+    return jsonify(win), 201
+
+
+@app.route("/api/maintenance/<int:wid>", methods=["DELETE"])
+@login_required
+def api_maintenance_delete(wid):
+    if not current_user.is_admin:
+        return ("", 403)
+    db.delete_maintenance_window(wid)
+    db.add_audit(current_user.username, "maintenance_delete",
+                 f"window_id={wid}", ip=request.remote_addr)
+    return ("", 204)
+
+
+# ─── API — OIDs personnalisés ──────────────────────────────────────────────────
+
+@app.route("/api/custom-oids")
+@login_required
+def api_custom_oids_list():
+    rid = _rid()
+    if not rid:
+        return jsonify([])
+    return jsonify(db.get_custom_oid_polls(rid))
+
+
+@app.route("/api/custom-oids", methods=["POST"])
+@login_required
+def api_custom_oids_create():
+    if not current_user.is_admin:
+        return ("", 403)
+    d = request.json or {}
+    rid = d.get("router_id") or _rid()
+    if not rid or not d.get("oid") or not d.get("label"):
+        return jsonify({"error": "router_id, oid et label requis"}), 400
+    poll = db.create_custom_oid_poll(
+        router_id=rid,
+        oid=d["oid"],
+        label=d["label"],
+        unit=d.get("unit", ""),
+    )
+    return jsonify(poll), 201
+
+
+@app.route("/api/custom-oids/<int:poll_id>", methods=["PUT"])
+@login_required
+def api_custom_oids_update(poll_id):
+    if not current_user.is_admin:
+        return ("", 403)
+    d = request.json or {}
+    poll = db.update_custom_oid_poll(poll_id, **d)
+    return jsonify(poll) if poll else ("", 404)
+
+
+@app.route("/api/custom-oids/<int:poll_id>", methods=["DELETE"])
+@login_required
+def api_custom_oids_delete(poll_id):
+    if not current_user.is_admin:
+        return ("", 403)
+    db.delete_custom_oid_poll(poll_id)
+    return ("", 204)
+
+
+@app.route("/api/custom-oids/<int:poll_id>/values")
+@login_required
+def api_custom_oids_values(poll_id):
+    hours = request.args.get("hours", 24, type=int)
+    rows  = db.get_custom_oid_values(poll_id, hours=hours)
+    return jsonify({
+        "labels": [datetime.fromtimestamp(r["ts"]).strftime("%H:%M") for r in rows],
+        "values": [r["value_num"] if r["value_num"] is not None else r["value_text"]
+                   for r in rows],
+    })
+
+
+# ─── API — SLA WAN ─────────────────────────────────────────────────────────────
+
+@app.route("/api/wan-sla")
+@login_required
+def api_wan_sla():
+    rid   = _rid()
+    hours = request.args.get("hours", 24, type=int)
+    if not rid:
+        return jsonify([])
+    return jsonify(db.get_wan_sla_list(rid, hours=hours))
+
+
+# ─── API — Totaux bande passante ───────────────────────────────────────────────
+
+@app.route("/api/bandwidth-totals")
+@login_required
+def api_bandwidth_totals():
+    rid         = _rid()
+    period_type = request.args.get("period", "daily")
+    if not rid:
+        return jsonify([])
+    return jsonify(db.get_bandwidth_totals(rid, period_type=period_type))
+
+
+# ─── API — WiFi client history ─────────────────────────────────────────────────
+
+@app.route("/api/wifi/clients/history")
+@login_required
+def api_wifi_clients_history():
+    rid   = _rid()
+    hours = request.args.get("hours", 24, type=int)
+    if not rid:
+        return jsonify([])
+    return jsonify(db.get_wifi_client_history(rid, hours=hours))
+
+
+# ─── Tableau de bord multi-routeurs ───────────────────────────────────────────
+
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    return render_template("dashboard.html", active_page="dashboard")
+
+
+@app.route("/api/dashboard")
+@login_required
+def api_dashboard():
+    """Retourne le statut résumé de tous les routeurs pour le dashboard global."""
+    routers = db.get_enabled_routers()
+    result  = []
+    for r in routers:
+        rid      = r["id"]
+        sys_data = db.get_latest_system(rid)
+        ifaces   = db.get_interfaces_latest(rid)
+        events   = db.get_events(router_id=rid, limit=100)
+        recent_ev = [e for e in events if not e.get("acked")]
+
+        ifaces_up   = sum(1 for i in ifaces if i.get("if_status") == 1)
+        ifaces_down = len(ifaces) - ifaces_up
+
+        errors   = sum(1 for e in recent_ev if e["level"] == "error")
+        warnings = sum(1 for e in recent_ev if e["level"] == "warning")
+
+        # Statut global : ok / warn / error
+        if errors > 0 or ifaces_down > 2:
+            status = "error"
+        elif warnings > 0 or ifaces_down > 0:
+            status = "warn"
+        else:
+            status = "ok"
+
+        # SLA WAN 24h
+        wan_sla = db.get_wan_sla_list(rid, hours=24)
+        best_sla = min((s["sla"] for s in wan_sla if s["sla"] is not None), default=None)
+
+        result.append({
+            "id":           rid,
+            "name":         r["name"],
+            "ip":           r["ip"],
+            "status":       status,
+            "cpu":          sys_data.get("cpu_usage"),
+            "mem":          sys_data.get("mem_usage"),
+            "temp":         sys_data.get("temperature"),
+            "uptime":       fmt_uptime(sys_data.get("sys_uptime")),
+            "ifaces_up":    ifaces_up,
+            "ifaces_total": len(ifaces),
+            "errors":       errors,
+            "warnings":     warnings,
+            "wan_sla":      best_sla,
+            "last_seen":    sys_data.get("ts"),
+            "in_maintenance": db.is_in_maintenance(rid),
+        })
+    return jsonify(result)
+
+
 # ─── Démarrage ────────────────────────────────────────────────────────────────
 
 db.init_pool()
@@ -1683,7 +1897,14 @@ if not db.needs_setup():
         reports.send_daily_report, "cron",
         hour=_report_hour, minute=0, id="daily_report", replace_existing=True,
     )
-    log.info("Jobs ping + rapport quotidien démarrés")
+    # Rapport hebdomadaire (lundi à 8h)
+    _weekly_hour = int(_cfg.get("weekly_report_hour", 8))
+    scheduler.add_job(
+        reports.send_weekly_report, "cron",
+        day_of_week="mon", hour=_weekly_hour, minute=0,
+        id="weekly_report", replace_existing=True,
+    )
+    log.info("Jobs ping + rapports quotidien/hebdo démarrés")
 
 # Vérification des mises à jour GitHub (toutes les 6h + au démarrage)
 scheduler.add_job(

@@ -86,7 +86,8 @@ def init_db() -> None:
                 poll_interval  INTEGER NOT NULL DEFAULT 60,
                 retention_days INTEGER NOT NULL DEFAULT 30,
                 enabled        BOOLEAN NOT NULL DEFAULT true,
-                created_at     BIGINT  NOT NULL
+                created_at     BIGINT  NOT NULL,
+                min_firmware   TEXT
             );
 
             CREATE TABLE IF NOT EXISTS system_metrics (
@@ -97,9 +98,10 @@ def init_db() -> None:
                 sys_descr   TEXT,
                 sys_uptime  BIGINT,
                 location    TEXT,
-                cpu_usage   DOUBLE PRECISION,
-                mem_usage   DOUBLE PRECISION,
-                temperature DOUBLE PRECISION
+                cpu_usage    DOUBLE PRECISION,
+                mem_usage    DOUBLE PRECISION,
+                temperature  DOUBLE PRECISION,
+                fault_status INTEGER
             );
 
             CREATE TABLE IF NOT EXISTS interface_stats (
@@ -302,10 +304,12 @@ def init_db() -> None:
 
         # Migration : colonnes packets + pps
         for tbl, col, defn in [
-            ("interface_stats", "in_ucast_pkts",  "BIGINT"),
-            ("interface_stats", "out_ucast_pkts", "BIGINT"),
-            ("interface_bps",   "in_pps",         "DOUBLE PRECISION"),
-            ("interface_bps",   "out_pps",        "DOUBLE PRECISION"),
+            ("interface_stats", "in_ucast_pkts",   "BIGINT"),
+            ("interface_stats", "out_ucast_pkts",  "BIGINT"),
+            ("interface_bps",   "in_pps",          "DOUBLE PRECISION"),
+            ("interface_bps",   "out_pps",         "DOUBLE PRECISION"),
+            ("system_metrics",  "fault_status",    "INTEGER"),
+            ("routers",         "min_firmware",    "TEXT"),
         ]:
             cur = _cur(conn)
             cur.execute(
@@ -355,6 +359,145 @@ def init_db() -> None:
                 used       BOOLEAN NOT NULL DEFAULT false
             );
         """)
+        # LTE metrics
+        _cur(conn).execute("""
+            CREATE TABLE IF NOT EXISTS lte_metrics (
+                id          SERIAL PRIMARY KEY,
+                router_id   INTEGER NOT NULL REFERENCES routers(id) ON DELETE CASCADE,
+                ts          BIGINT  NOT NULL DEFAULT EXTRACT(EPOCH FROM NOW()),
+                rssi        INTEGER,
+                rsrp        INTEGER,
+                rsrq        INTEGER,
+                sinr        INTEGER,
+                operator    TEXT,
+                access_mode TEXT,
+                sim_status  INTEGER
+            );
+        """)
+        _cur(conn).execute(
+            "CREATE INDEX IF NOT EXISTS idx_lte_router_ts ON lte_metrics(router_id, ts DESC)"
+        )
+
+        # WiFi radio metrics
+        _cur(conn).execute("""
+            CREATE TABLE IF NOT EXISTS wifi_radio (
+                id           SERIAL PRIMARY KEY,
+                router_id    INTEGER NOT NULL REFERENCES routers(id) ON DELETE CASCADE,
+                ts           BIGINT  NOT NULL DEFAULT EXTRACT(EPOCH FROM NOW()),
+                radio_index  INTEGER NOT NULL,
+                channel      INTEGER,
+                tx_power_dbm INTEGER,
+                mode         TEXT
+            );
+        """)
+        _cur(conn).execute(
+            "CREATE INDEX IF NOT EXISTS idx_wifiradio_router ON wifi_radio(router_id, ts DESC)"
+        )
+
+        # ── Nouvelles tables ──────────────────────────────────────────────────
+
+        # Fenêtres de maintenance (bypass notifications)
+        _cur(conn).execute("""
+            CREATE TABLE IF NOT EXISTS maintenance_windows (
+                id          SERIAL PRIMARY KEY,
+                router_id   INTEGER REFERENCES routers(id) ON DELETE CASCADE,
+                start_ts    BIGINT NOT NULL,
+                end_ts      BIGINT NOT NULL,
+                description TEXT,
+                created_at  BIGINT NOT NULL,
+                created_by  TEXT
+            );
+        """)
+        _cur(conn).execute(
+            "CREATE INDEX IF NOT EXISTS idx_maint_router ON maintenance_windows(router_id, start_ts)"
+        )
+
+        # Historique clients WiFi
+        _cur(conn).execute("""
+            CREATE TABLE IF NOT EXISTS wifi_client_history (
+                id        BIGSERIAL PRIMARY KEY,
+                router_id INTEGER NOT NULL REFERENCES routers(id) ON DELETE CASCADE,
+                ts        BIGINT  NOT NULL,
+                mac       TEXT    NOT NULL,
+                ssid      TEXT,
+                rssi      INTEGER,
+                band      TEXT
+            );
+        """)
+        _cur(conn).execute(
+            "CREATE INDEX IF NOT EXISTS idx_wificli_router_ts ON wifi_client_history(router_id, ts DESC)"
+        )
+
+        # Totaux de bande passante journaliers / mensuels
+        _cur(conn).execute("""
+            CREATE TABLE IF NOT EXISTS bandwidth_totals (
+                id          BIGSERIAL PRIMARY KEY,
+                router_id   INTEGER NOT NULL REFERENCES routers(id) ON DELETE CASCADE,
+                if_index    INTEGER NOT NULL,
+                if_name     TEXT,
+                period_type TEXT    NOT NULL,   -- 'daily' | 'monthly'
+                period_key  TEXT    NOT NULL,   -- '2026-03-20' | '2026-03'
+                in_bytes    BIGINT  NOT NULL DEFAULT 0,
+                out_bytes   BIGINT  NOT NULL DEFAULT 0,
+                updated_at  BIGINT  NOT NULL,
+                UNIQUE (router_id, if_index, period_type, period_key)
+            );
+        """)
+        _cur(conn).execute(
+            "CREATE INDEX IF NOT EXISTS idx_bwtotals_router ON bandwidth_totals(router_id, period_type, period_key)"
+        )
+
+        # SLA WAN par interface
+        _cur(conn).execute("""
+            CREATE TABLE IF NOT EXISTS wan_sla (
+                id        BIGSERIAL PRIMARY KEY,
+                router_id INTEGER NOT NULL REFERENCES routers(id) ON DELETE CASCADE,
+                if_index  INTEGER NOT NULL,
+                if_name   TEXT,
+                ts        BIGINT  NOT NULL,
+                was_up    BOOLEAN NOT NULL
+            );
+        """)
+        _cur(conn).execute(
+            "CREATE INDEX IF NOT EXISTS idx_wansla_router_ts ON wan_sla(router_id, if_index, ts DESC)"
+        )
+
+        # OID personnalisés (polling)
+        _cur(conn).execute("""
+            CREATE TABLE IF NOT EXISTS custom_oid_polls (
+                id        SERIAL PRIMARY KEY,
+                router_id INTEGER NOT NULL REFERENCES routers(id) ON DELETE CASCADE,
+                oid       TEXT    NOT NULL,
+                label     TEXT    NOT NULL,
+                unit      TEXT,
+                enabled   BOOLEAN NOT NULL DEFAULT true,
+                created_at BIGINT NOT NULL
+            );
+        """)
+        _cur(conn).execute("""
+            CREATE TABLE IF NOT EXISTS custom_oid_values (
+                id         BIGSERIAL PRIMARY KEY,
+                poll_id    INTEGER NOT NULL REFERENCES custom_oid_polls(id) ON DELETE CASCADE,
+                ts         BIGINT  NOT NULL,
+                value_text TEXT,
+                value_num  DOUBLE PRECISION
+            );
+        """)
+        _cur(conn).execute(
+            "CREATE INDEX IF NOT EXISTS idx_customval_poll_ts ON custom_oid_values(poll_id, ts DESC)"
+        )
+
+        # Migration arp_history : colonnes is_known + alerted
+        for col, defn in [("is_known", "BOOLEAN NOT NULL DEFAULT false"),
+                          ("alerted",  "BOOLEAN NOT NULL DEFAULT false")]:
+            cur = _cur(conn)
+            cur.execute(
+                "SELECT 1 FROM information_schema.columns "
+                "WHERE table_name='arp_history' AND column_name=%s", (col,)
+            )
+            if not cur.fetchone():
+                _cur(conn).execute(f"ALTER TABLE arp_history ADD COLUMN {col} {defn}")
+
     log.info("Schéma DB initialisé")
 
 
@@ -552,7 +695,7 @@ def update_router(router_id: int, **fields) -> dict | None:
     allowed = {"name", "ip", "snmp_version", "snmp_community", "snmp_port",
                "snmp_v3_username", "snmp_v3_auth_protocol", "snmp_v3_auth_password",
                "snmp_v3_priv_protocol", "snmp_v3_priv_password", "snmp_v3_security_level",
-               "poll_interval", "retention_days", "enabled"}
+               "poll_interval", "retention_days", "enabled", "min_firmware"}
     updates = {k: v for k, v in fields.items() if k in allowed}
     if not updates:
         return get_router(router_id)
@@ -579,12 +722,12 @@ def insert_system(router_id: int, data: dict) -> None:
         _cur(conn).execute(
             "INSERT INTO system_metrics "
             "(router_id, ts, sys_name, sys_descr, sys_uptime, location, "
-            " cpu_usage, mem_usage, temperature) "
-            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+            " cpu_usage, mem_usage, temperature, fault_status) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
             (router_id, int(time.time()),
              data.get("sys_name"), data.get("sys_descr"), data.get("sys_uptime"),
              data.get("location"), data.get("cpu_usage"),
-             data.get("mem_usage"), data.get("temperature"))
+             data.get("mem_usage"), data.get("temperature"), data.get("fault_status"))
         )
 
 
@@ -1232,6 +1375,79 @@ def ack_all_events(router_id: int | None, username: str) -> int:
 
 # ─── ARP historique ───────────────────────────────────────────────────────────
 
+def upsert_lte(router_id: int, data: dict) -> None:
+    """Insère les métriques LTE (1 ligne par poll)."""
+    now = int(time.time())
+    with get_db() as conn:
+        _cur(conn).execute("""
+            INSERT INTO lte_metrics
+                (router_id, ts, rssi, rsrp, rsrq, sinr, operator, access_mode, sim_status)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        """, (
+            router_id, now,
+            data.get("rssi"), data.get("rsrp"), data.get("rsrq"), data.get("sinr"),
+            data.get("operator"), data.get("access_mode"), data.get("sim_status"),
+        ))
+
+
+def get_lte_latest(router_id: int) -> dict | None:
+    """Retourne la dernière mesure LTE pour un routeur."""
+    with get_db() as conn:
+        cur = _cur(conn)
+        cur.execute("""
+            SELECT * FROM lte_metrics
+            WHERE router_id = %s
+            ORDER BY ts DESC LIMIT 1
+        """, (router_id,))
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def get_lte_history(router_id: int, hours: int = 24) -> list:
+    """Retourne l'historique RSSI/RSRP sur N heures."""
+    since = int(time.time()) - hours * 3600
+    with get_db() as conn:
+        cur = _cur(conn)
+        cur.execute("""
+            SELECT ts, rssi, rsrp, rsrq, sinr, operator, access_mode
+            FROM lte_metrics
+            WHERE router_id = %s AND ts >= %s
+            ORDER BY ts ASC
+        """, (router_id, since))
+        return [dict(r) for r in cur.fetchall()]
+
+
+def upsert_wifi_radio(router_id: int, radios: list) -> None:
+    """Insère les métriques radio WiFi (canal, puissance)."""
+    if not radios:
+        return
+    now = int(time.time())
+    with get_db() as conn:
+        for r in radios:
+            _cur(conn).execute("""
+                INSERT INTO wifi_radio (router_id, ts, radio_index, channel, tx_power_dbm, mode)
+                VALUES (%s,%s,%s,%s,%s,%s)
+            """, (
+                router_id, now,
+                r.get("radio_index"), r.get("channel"),
+                r.get("tx_power_dbm"), r.get("mode"),
+            ))
+
+
+def get_wifi_radio_latest(router_id: int) -> list:
+    """Retourne les dernières infos radio (1 ligne par radio index)."""
+    with get_db() as conn:
+        cur = _cur(conn)
+        cur.execute("""
+            SELECT DISTINCT ON (radio_index)
+                radio_index, channel, tx_power_dbm, mode, ts
+            FROM wifi_radio
+            WHERE router_id = %s
+            ORDER BY radio_index, ts DESC
+        """, (router_id,))
+        return [dict(r) for r in cur.fetchall()]
+
+
 def upsert_arp(router_id: int, entries: list) -> None:
     """Insère ou met à jour l'historique ARP (first_seen conservé, ip + last_seen mis à jour)."""
     if not entries:
@@ -1305,3 +1521,283 @@ def get_all_user_perms() -> dict:
                 {"router_id": r["router_id"], "can_write": r["can_write"]}
             )
         return result
+
+
+# ─── Fenêtres de maintenance ──────────────────────────────────────────────────
+
+def is_in_maintenance(router_id: int | None) -> bool:
+    """Retourne True si le routeur (ou global si router_id=None) est en maintenance."""
+    now = int(time.time())
+    with get_db() as conn:
+        cur = _cur(conn)
+        cur.execute(
+            "SELECT 1 FROM maintenance_windows "
+            "WHERE (router_id=%s OR router_id IS NULL) "
+            "AND start_ts <= %s AND end_ts >= %s LIMIT 1",
+            (router_id, now, now)
+        )
+        return cur.fetchone() is not None
+
+
+def get_maintenance_windows(router_id: int | None = None) -> list:
+    with get_db() as conn:
+        cur = _cur(conn)
+        if router_id:
+            cur.execute(
+                "SELECT * FROM maintenance_windows "
+                "WHERE router_id=%s OR router_id IS NULL ORDER BY start_ts DESC",
+                (router_id,)
+            )
+        else:
+            cur.execute("SELECT * FROM maintenance_windows ORDER BY start_ts DESC")
+        return [dict(r) for r in cur.fetchall()]
+
+
+def create_maintenance_window(router_id: int | None, start_ts: int, end_ts: int,
+                               description: str = "", created_by: str = "") -> dict:
+    with get_db() as conn:
+        cur = _cur(conn)
+        cur.execute(
+            "INSERT INTO maintenance_windows (router_id, start_ts, end_ts, description, created_at, created_by) "
+            "VALUES (%s,%s,%s,%s,%s,%s) RETURNING *",
+            (router_id, start_ts, end_ts, description, int(time.time()), created_by)
+        )
+        return dict(cur.fetchone())
+
+
+def delete_maintenance_window(window_id: int) -> None:
+    with get_db() as conn:
+        _cur(conn).execute("DELETE FROM maintenance_windows WHERE id=%s", (window_id,))
+
+
+# ─── Historique clients WiFi ──────────────────────────────────────────────────
+
+def insert_wifi_client_history(router_id: int, clients: list) -> None:
+    if not clients:
+        return
+    ts = int(time.time())
+    with get_db() as conn:
+        psycopg2.extras.execute_batch(
+            _cur(conn),
+            "INSERT INTO wifi_client_history (router_id, ts, mac, ssid, rssi, band) "
+            "VALUES (%s,%s,%s,%s,%s,%s)",
+            [(router_id, ts, c.get("mac"), c.get("ssid"), c.get("rssi"), c.get("band"))
+             for c in clients]
+        )
+
+
+def get_wifi_client_history(router_id: int, hours: int = 24) -> list:
+    since = int(time.time()) - hours * 3600
+    with get_db() as conn:
+        cur = _cur(conn)
+        cur.execute(
+            "SELECT * FROM wifi_client_history WHERE router_id=%s AND ts>=%s ORDER BY ts DESC",
+            (router_id, since)
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+
+# ─── Totaux bande passante ────────────────────────────────────────────────────
+
+def accumulate_bandwidth(router_id: int, if_index: int, if_name: str,
+                         in_bytes_delta: int, out_bytes_delta: int) -> None:
+    """Ajoute les octets delta aux totaux du jour et du mois courants."""
+    now   = int(time.time())
+    day   = time.strftime("%Y-%m-%d", time.gmtime(now))
+    month = time.strftime("%Y-%m",    time.gmtime(now))
+    with get_db() as conn:
+        for ptype, pkey in [("daily", day), ("monthly", month)]:
+            _cur(conn).execute(
+                "INSERT INTO bandwidth_totals "
+                "(router_id, if_index, if_name, period_type, period_key, in_bytes, out_bytes, updated_at) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s) "
+                "ON CONFLICT (router_id, if_index, period_type, period_key) DO UPDATE "
+                "SET in_bytes=bandwidth_totals.in_bytes+EXCLUDED.in_bytes, "
+                "    out_bytes=bandwidth_totals.out_bytes+EXCLUDED.out_bytes, "
+                "    updated_at=EXCLUDED.updated_at",
+                (router_id, if_index, if_name, ptype, pkey,
+                 in_bytes_delta, out_bytes_delta, now)
+            )
+
+
+def get_bandwidth_totals(router_id: int, period_type: str = "daily",
+                         limit: int = 30) -> list:
+    with get_db() as conn:
+        cur = _cur(conn)
+        cur.execute(
+            "SELECT if_index, if_name, period_key, in_bytes, out_bytes "
+            "FROM bandwidth_totals "
+            "WHERE router_id=%s AND period_type=%s "
+            "ORDER BY period_key DESC, if_index "
+            "LIMIT %s",
+            (router_id, period_type, limit)
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+
+# ─── SLA WAN ──────────────────────────────────────────────────────────────────
+
+def insert_wan_sla(router_id: int, if_index: int, if_name: str, was_up: bool) -> None:
+    with get_db() as conn:
+        _cur(conn).execute(
+            "INSERT INTO wan_sla (router_id, if_index, if_name, ts, was_up) "
+            "VALUES (%s,%s,%s,%s,%s)",
+            (router_id, if_index, if_name, int(time.time()), was_up)
+        )
+
+
+def get_wan_sla_stats(router_id: int, if_index: int, hours: int = 24) -> dict:
+    since = int(time.time()) - hours * 3600
+    with get_db() as conn:
+        cur = _cur(conn)
+        cur.execute(
+            "SELECT COUNT(*) AS total, SUM(CASE WHEN was_up THEN 1 ELSE 0 END) AS up_count "
+            "FROM wan_sla WHERE router_id=%s AND if_index=%s AND ts>=%s",
+            (router_id, if_index, since)
+        )
+        row = cur.fetchone()
+    if not row or row["total"] == 0:
+        return {"sla": None, "total": 0, "up": 0}
+    total = row["total"]
+    up    = row["up_count"] or 0
+    return {"sla": round(up / total * 100, 2), "total": total, "up": up}
+
+
+def get_wan_sla_list(router_id: int, hours: int = 24) -> list:
+    """Retourne la liste des interfaces WAN avec leurs stats SLA."""
+    since = int(time.time()) - hours * 3600
+    with get_db() as conn:
+        cur = _cur(conn)
+        cur.execute(
+            "SELECT if_index, if_name, "
+            "COUNT(*) AS total, "
+            "SUM(CASE WHEN was_up THEN 1 ELSE 0 END) AS up_count "
+            "FROM wan_sla WHERE router_id=%s AND ts>=%s "
+            "GROUP BY if_index, if_name ORDER BY if_index",
+            (router_id, since)
+        )
+        rows = cur.fetchall()
+    result = []
+    for r in rows:
+        total = r["total"] or 0
+        up    = r["up_count"] or 0
+        result.append({
+            "if_index": r["if_index"],
+            "if_name":  r["if_name"],
+            "total":    total,
+            "up":       up,
+            "sla":      round(up / total * 100, 2) if total > 0 else None,
+        })
+    return result
+
+
+# ─── OIDs personnalisés ────────────────────────────────────────────────────────
+
+def get_custom_oid_polls(router_id: int, enabled_only: bool = False) -> list:
+    with get_db() as conn:
+        cur = _cur(conn)
+        if enabled_only:
+            cur.execute(
+                "SELECT * FROM custom_oid_polls WHERE router_id=%s AND enabled=true ORDER BY id",
+                (router_id,)
+            )
+        else:
+            cur.execute(
+                "SELECT * FROM custom_oid_polls WHERE router_id=%s ORDER BY id",
+                (router_id,)
+            )
+        return [dict(r) for r in cur.fetchall()]
+
+
+def create_custom_oid_poll(router_id: int, oid: str, label: str,
+                            unit: str = "") -> dict:
+    with get_db() as conn:
+        cur = _cur(conn)
+        cur.execute(
+            "INSERT INTO custom_oid_polls (router_id, oid, label, unit, enabled, created_at) "
+            "VALUES (%s,%s,%s,%s,true,%s) RETURNING *",
+            (router_id, oid.strip(), label.strip(), unit.strip(), int(time.time()))
+        )
+        return dict(cur.fetchone())
+
+
+def update_custom_oid_poll(poll_id: int, **fields) -> dict | None:
+    allowed = {"oid", "label", "unit", "enabled"}
+    updates = {k: v for k, v in fields.items() if k in allowed}
+    if not updates:
+        return None
+    set_clause = ", ".join(f"{k} = %s" for k in updates)
+    with get_db() as conn:
+        cur = _cur(conn)
+        cur.execute(
+            f"UPDATE custom_oid_polls SET {set_clause} WHERE id=%s RETURNING *",
+            (*updates.values(), poll_id)
+        )
+        row = cur.fetchone()
+    return dict(row) if row else None
+
+
+def delete_custom_oid_poll(poll_id: int) -> None:
+    with get_db() as conn:
+        _cur(conn).execute("DELETE FROM custom_oid_polls WHERE id=%s", (poll_id,))
+
+
+def insert_custom_oid_value(poll_id: int, value_text: str,
+                             value_num: float | None = None) -> None:
+    with get_db() as conn:
+        _cur(conn).execute(
+            "INSERT INTO custom_oid_values (poll_id, ts, value_text, value_num) "
+            "VALUES (%s,%s,%s,%s)",
+            (poll_id, int(time.time()), value_text, value_num)
+        )
+
+
+def get_custom_oid_values(poll_id: int, hours: int = 24) -> list:
+    since = int(time.time()) - hours * 3600
+    with get_db() as conn:
+        cur = _cur(conn)
+        cur.execute(
+            "SELECT ts, value_text, value_num FROM custom_oid_values "
+            "WHERE poll_id=%s AND ts>=%s ORDER BY ts ASC",
+            (poll_id, since)
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+
+def purge_custom_oid_values(days: int = 30) -> None:
+    cutoff = int(time.time()) - days * 86400
+    with get_db() as conn:
+        _cur(conn).execute("DELETE FROM custom_oid_values WHERE ts<%s", (cutoff,))
+
+
+# ─── Nouveau MAC (détection) ──────────────────────────────────────────────────
+
+def get_unalerted_new_macs(router_id: int) -> list:
+    """Retourne les MACs récents non encore signalés (is_known=false, alerted=false)."""
+    with get_db() as conn:
+        cur = _cur(conn)
+        cur.execute(
+            "SELECT mac, ip, first_seen FROM arp_history "
+            "WHERE router_id=%s AND is_known=false AND alerted=false "
+            "ORDER BY first_seen DESC",
+            (router_id,)
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+
+def mark_mac_alerted(router_id: int, mac: str) -> None:
+    with get_db() as conn:
+        _cur(conn).execute(
+            "UPDATE arp_history SET alerted=true WHERE router_id=%s AND mac=%s",
+            (router_id, mac.upper())
+        )
+
+
+def mark_mac_known(router_id: int, mac: str) -> None:
+    """Marque un MAC comme connu (plus d'alertes future)."""
+    with get_db() as conn:
+        _cur(conn).execute(
+            "UPDATE arp_history SET is_known=true, alerted=true "
+            "WHERE router_id=%s AND mac=%s",
+            (router_id, mac.upper())
+        )

@@ -7,6 +7,468 @@
   <span class="page-subtitle">{{ _('Trafic par interface — graphiques en temps réel') }}</span>
 </div>
 
+<!-- ── Panel routeur ──────────────────────────────────────────────────────── -->
+<div class="card" id="router-panel-card" style="margin-bottom:1rem;overflow:hidden">
+  <div class="card__header" style="padding-bottom:8px">
+    <span><i class="fa-solid fa-server" style="color:var(--red)"></i> {{ _('Panel routeur') }}</span>
+    <span id="panel-updated" style="font-size:.73rem;color:var(--txt-muted)"></span>
+  </div>
+  <!-- Sélecteur de face -->
+  <div class="rp-tabs">
+    <button class="rp-tab rp-tab--active" onclick="switchFace('front')">{{ _('Face avant') }}</button>
+    <button class="rp-tab" onclick="switchFace('rear')">{{ _('Face arrière') }}</button>
+  </div>
+
+  <div class="card__body" style="padding:0">
+
+    <!-- Face avant du routeur -->
+    <div id="router-face">
+
+      <!-- Bande noire supérieure avec les LEDs système -->
+      <div class="rp-top-strip">
+        <div class="rp-led-group">
+          <div class="rp-led-item" id="led-PWR">
+            <div class="rp-led rp-led--green"></div>
+            <span>PWR</span>
+          </div>
+          <div class="rp-led-item" id="led-SYS">
+            <div class="rp-led rp-led--unknown"></div>
+            <span>SYS</span>
+          </div>
+          <div class="rp-led-item" id="led-USB">
+            <div class="rp-led rp-led--off"></div>
+            <span>USB</span>
+          </div>
+          <div class="rp-led-item" id="led-INET">
+            <div class="rp-led rp-led--unknown"></div>
+            <span>INET</span>
+          </div>
+          <div class="rp-led-item" id="led-CTRL">
+            <div class="rp-led rp-led--unknown"></div>
+            <span>CTRL</span>
+          </div>
+        </div>
+
+        <div class="rp-divider"></div>
+
+        <div class="rp-led-group">
+          <div class="rp-led-item" id="led-WWAN">
+            <div class="rp-led rp-led--unknown"></div>
+            <span>WWAN</span>
+          </div>
+          <div class="rp-led-item" id="led-RSSI">
+            <div class="rp-rssi">
+              <div class="rp-rssi-bar" id="rssi-b1"></div>
+              <div class="rp-rssi-bar" id="rssi-b2"></div>
+              <div class="rp-rssi-bar" id="rssi-b3"></div>
+              <div class="rp-rssi-bar" id="rssi-b4"></div>
+            </div>
+            <span>RSSI</span>
+          </div>
+          <div class="rp-led-item" id="led-GE8">
+            <div class="rp-led rp-led--unknown"></div>
+            <span>GE8</span>
+          </div>
+          <div class="rp-led-item" id="led-GE9">
+            <div class="rp-led rp-led--unknown"></div>
+            <span>GE9</span>
+          </div>
+        </div>
+
+        <div class="rp-divider rp-divider--large"></div>
+
+        <div class="rp-led-group">
+          {% for n in range(8) %}
+          <div class="rp-led-item" id="led-GE{{ n }}">
+            <div class="rp-led rp-led--unknown"></div>
+            <span>GE{{ n }}</span>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="rp-divider"></div>
+
+        <div class="rp-led-group">
+          <div class="rp-led-item" id="led-24G">
+            <div class="rp-led rp-led--unknown"></div>
+            <span>2.4G</span>
+          </div>
+          <div class="rp-led-item" id="led-5G">
+            <div class="rp-led rp-led--unknown"></div>
+            <span>5G</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bas du panel : branding -->
+      <div class="rp-bottom-strip">
+        <div>
+          <div class="rp-brand">HUAWEI</div>
+          <div class="rp-model">NetEngine AR600 Series</div>
+        </div>
+        <!-- Légende -->
+        <div class="rp-legend">
+          <span class="rp-legend-item"><span class="rp-led rp-led--green" style="width:8px;height:8px"></span> {{ _('Actif') }}</span>
+          <span class="rp-legend-item"><span class="rp-led rp-led--activity" style="width:8px;height:8px"></span> {{ _('Trafic') }}</span>
+          <span class="rp-legend-item"><span class="rp-led rp-led--off" style="width:8px;height:8px"></span> {{ _('Inactif') }}</span>
+          <span class="rp-legend-item"><span class="rp-led rp-led--error" style="width:8px;height:8px"></span> {{ _('Erreur') }}</span>
+        </div>
+      </div>
+
+    </div><!-- /router-face -->
+
+    <!-- Face arrière AR651W -->
+    <div id="router-rear" style="display:none">
+      <div class="rr-chassis">
+
+        <!-- Branding -->
+        <div class="rr-brand-bar">HUAWEI &nbsp; NetEngine AR651W</div>
+
+        <!-- Vis de masse -->
+        <div class="rr-ground" title="Ground"></div>
+
+        <!-- Gauche : MIC + RESET + USB + CONSOLE -->
+        <div style="display:flex;align-items:flex-end;gap:5px">
+          <div class="rr-misc-port" data-tooltip="MIC">
+            <div class="rr-jack"></div>
+            <span class="rr-label">MIC</span>
+          </div>
+          <div class="rr-misc-port" data-tooltip="Reset">
+            <div class="rr-reset-btn"></div>
+            <span class="rr-label">RST</span>
+          </div>
+          <div class="rr-misc-port" data-tooltip="USB 3.0">
+            <div class="rr-usb"></div>
+            <span class="rr-label">USB</span>
+          </div>
+          <div class="rr-misc-port" data-tooltip="Console">
+            <div class="rr-rj45 rr-rj45--console"></div>
+            <span class="rr-label">CONSOLE</span>
+          </div>
+        </div>
+
+        <div class="rr-vdiv"></div>
+
+        <!-- Bloc GE0–GE7 : 4 colonnes × 2 rangées
+             Rangée haute  : GE1  GE3  GE5  GE7
+             Rangée basse  : GE0  GE2  GE4  GE6  (MGMT/GE0 en col 1) -->
+        <div class="rr-stack-group">
+          <div class="rr-stack-row">
+            {% for n in [1,3,5,7] %}
+            <div class="rr-port" id="rr-GE{{ n }}">
+              <div class="rr-port-led rp-led rp-led--unknown"></div>
+              <div class="rr-rj45"></div>
+              <span class="rr-label">GE{{ n }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="rr-stack-row">
+            <!-- MGMT/GE0 en première position (col 1, sous GE1) -->
+            <div class="rr-port" id="rr-GE0">
+              <div class="rr-port-led rp-led rp-led--unknown"></div>
+              <div class="rr-rj45"></div>
+              <span class="rr-label">MGMT/<br>GE0</span>
+            </div>
+            {% for n in [2,4,6] %}
+            <div class="rr-port" id="rr-GE{{ n }}">
+              <div class="rr-port-led rp-led rp-led--unknown"></div>
+              <div class="rr-rj45"></div>
+              <span class="rr-label">GE{{ n }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="rr-vdiv"></div>
+
+        <!-- WAN cuivre GE8/GE9 -->
+        <div class="rr-wan-section">
+          <span class="rr-wan-badge">WAN</span>
+          <div class="rr-wan-ports">
+            <div class="rr-port" id="rr-GE8">
+              <div class="rr-port-led rp-led rp-led--unknown"></div>
+              <div class="rr-rj45"></div>
+              <span class="rr-label">GE8</span>
+            </div>
+            <div class="rr-port" id="rr-GE9">
+              <div class="rr-port-led rp-led rp-led--unknown"></div>
+              <div class="rr-rj45"></div>
+              <span class="rr-label">GE9</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SFP combo GE8/GE9 (même interfaces, media fibre optionnel) -->
+        <div class="rr-sfp-section">
+          <span class="rr-sfp-badge">SFP</span>
+          <div class="rr-sfp-ports">
+            <div class="rr-port" id="rr-SFP8">
+              <div class="rr-port-led rp-led rp-led--off"></div>
+              <div class="rr-sfp"></div>
+              <span class="rr-label">GE8</span>
+            </div>
+            <div class="rr-port" id="rr-SFP9">
+              <div class="rr-port-led rp-led rp-led--off"></div>
+              <div class="rr-sfp"></div>
+              <span class="rr-label">GE9</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alimentation 12V -->
+        <div style="margin-left:auto;flex-shrink:0;align-self:center">
+          <div class="rr-power">12V<br>5A</div>
+        </div>
+
+      </div><!-- /rr-chassis -->
+
+      <div class="rp-bottom-strip" style="background:#1a1a1a">
+        <div>
+          <div class="rp-brand">HUAWEI</div>
+          <div class="rp-model">NetEngine AR651W — {{ _('Face arrière') }}</div>
+        </div>
+        <div class="rp-legend">
+          <span class="rp-legend-item"><span class="rp-led rp-led--green" style="width:8px;height:8px"></span> {{ _('Actif') }}</span>
+          <span class="rp-legend-item"><span class="rp-led rp-led--activity" style="width:8px;height:8px"></span> {{ _('Trafic') }}</span>
+          <span class="rp-legend-item"><span class="rp-led rp-led--off" style="width:8px;height:8px"></span> {{ _('Inactif') }}</span>
+          <span class="rp-legend-item"><span class="rp-led rp-led--error" style="width:8px;height:8px"></span> {{ _('Erreur') }}</span>
+        </div>
+      </div>
+    </div><!-- /router-rear -->
+
+  </div>
+</div>
+
+<style>
+#router-face {
+  background: #222;
+  border-radius: 0 0 6px 6px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+.rp-top-strip {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 4px; padding: 10px 16px;
+  background: #2b2b2b;
+}
+.rp-led-group {
+  display: flex; align-items: flex-end; gap: 2px;
+}
+.rp-led-item {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 5px; padding: 2px 5px;
+  cursor: default;
+  position: relative;
+}
+.rp-led-item span {
+  font-size: .56rem; font-weight: 600; letter-spacing: .3px;
+  color: #888; text-transform: uppercase; white-space: nowrap;
+}
+.rp-led {
+  width: 9px; height: 9px; border-radius: 50%;
+  transition: background .4s, box-shadow .4s;
+  flex-shrink: 0;
+}
+/* États LED */
+.rp-led--green   { background: #00cc55; box-shadow: 0 0 6px rgba(0,204,85,0.7); }
+.rp-led--activity{ background: #00cc55; box-shadow: 0 0 8px rgba(0,204,85,0.9); animation: blink .5s ease-in-out infinite; }
+.rp-led--off     { background: #2a2a2a; box-shadow: none; border: 1px solid #333; }
+.rp-led--warn    { background: #ff9900; box-shadow: 0 0 6px rgba(255,153,0,0.7); }
+.rp-led--error   { background: #cc0000; box-shadow: 0 0 6px rgba(204,0,0,0.7); }
+.rp-led--unknown { background: #444; box-shadow: none; }
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .45; }
+}
+/* RSSI bars */
+.rp-rssi {
+  display: flex; align-items: flex-end; gap: 2px;
+  height: 14px;
+}
+.rp-rssi-bar {
+  width: 4px; border-radius: 1px;
+  background: #333;
+  transition: background .4s, height .4s;
+}
+#rssi-b1 { height: 4px; }
+#rssi-b2 { height: 7px; }
+#rssi-b3 { height: 10px; }
+#rssi-b4 { height: 14px; }
+.rp-rssi-bar.active { background: #00cc55; }
+.rp-rssi-bar.active-med { background: #e07000; }
+.rp-rssi-bar.active-low { background: #cc0000; }
+
+.rp-divider       { width: 1px; height: 32px; background: #444; margin: 0 6px; flex-shrink: 0; }
+.rp-divider--large{ width: 1px; height: 32px; background: #444; margin: 0 12px; flex-shrink: 0; }
+
+.rp-bottom-strip {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 16px;
+  background: #1e1e1e;
+}
+.rp-brand { font-size: .7rem; font-weight: 700; color: #888; letter-spacing: 1px; }
+.rp-model { font-size: .62rem; color: #555; letter-spacing: .3px; margin-top: 1px; }
+.rp-legend {
+  display: flex; align-items: center; gap: 12px;
+  flex-wrap: wrap; justify-content: flex-end;
+}
+.rp-legend-item {
+  display: flex; align-items: center; gap: 5px;
+  font-size: .65rem; color: #555;
+}
+
+/* Tooltip */
+.rp-led-item:hover::after {
+  content: attr(data-tooltip);
+  position: absolute; bottom: 100%; left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  background: #111; border: 1px solid #333;
+  border-radius: 5px; padding: 4px 8px;
+  font-size: .72rem; color: #ccc; white-space: nowrap;
+  pointer-events: none; z-index: 10;
+}
+
+@media (max-width: 600px) {
+  .rp-top-strip { gap: 2px; padding: 8px 10px; }
+  .rp-led-item { padding: 2px 3px; }
+  .rp-led-item span { font-size: .5rem; }
+  .rp-led { width: 7px; height: 7px; }
+  .rp-divider, .rp-divider--large { margin: 0 4px; }
+  .rp-legend { display: none; }
+}
+
+/* ── View tabs ───────────────────────────────────────────────────────────── */
+.rp-tabs {
+  display: flex; background: #1e1e1e; border-bottom: 1px solid #2e2e2e;
+}
+.rp-tab {
+  background: none; border: none; color: #666;
+  padding: 7px 16px; font-size: .7rem; font-weight: 600;
+  cursor: pointer; letter-spacing: .5px;
+  border-bottom: 2px solid transparent;
+  transition: color .2s, border-color .2s;
+}
+.rp-tab:hover { color: #ccc; }
+.rp-tab--active { color: #fff; border-bottom-color: #cc0000; }
+
+/* ── Face arrière (chassis aluminium argenté) ──────────────────────────── */
+#router-rear { font-family: 'Segoe UI', system-ui, sans-serif; }
+.rr-chassis {
+  display: flex; align-items: center; flex-wrap: nowrap;
+  gap: 7px; padding: 18px 16px 10px;
+  background: linear-gradient(180deg, #d4d4d4 0%, #c0c0c0 40%, #b4b4b4 70%, #bcbcbc 100%);
+  border-bottom: 3px solid #999; overflow-x: auto; min-height: 92px; position: relative;
+}
+/* Branding gravé en haut */
+.rr-brand-bar {
+  position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
+  font-size: .52rem; font-weight: 700; color: #555; letter-spacing: .8px;
+  white-space: nowrap; pointer-events: none;
+}
+/* Vis de masse */
+.rr-ground {
+  width: 15px; height: 15px; border-radius: 50%; flex-shrink: 0;
+  background: radial-gradient(circle at 38% 35%, #e8e8e8 20%, #aaa 80%);
+  border: 1.5px solid #888; box-shadow: inset 0 1px 2px rgba(0,0,0,.3);
+}
+.rr-vdiv  { width:1px; height:52px; background:rgba(0,0,0,.18); flex-shrink:0; margin:0 4px; }
+/* Ports RJ45 */
+.rr-rj45 {
+  width: 24px; height: 19px; background: #181818;
+  border: 1.5px solid #555; border-radius: 2px; position: relative;
+}
+.rr-rj45::after {
+  content: ''; position: absolute;
+  bottom: 2px; left: 50%; transform: translateX(-50%);
+  width: 13px; height: 6px; border: 1px solid #444; border-radius: 1px;
+}
+.rr-rj45--console { border-color: #2a7abf; background: #0a1e30; }
+/* SFP cage */
+.rr-sfp {
+  width: 22px; height: 15px; background: #1a1a1a;
+  border: 1.5px solid #555; border-radius: 1px; position: relative;
+}
+.rr-sfp::after {
+  content: ''; position: absolute;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 14px; height: 7px; background: #0a0a0a; border-radius: 1px;
+}
+/* USB 3.0 (bleu) */
+.rr-usb {
+  width: 15px; height: 23px;
+  background: linear-gradient(180deg, #1d5fa8, #153f70);
+  border: 1.5px solid #3a90d9; border-radius: 2px;
+}
+/* Bouton RESET */
+.rr-reset-btn {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: radial-gradient(circle, #666, #3a3a3a); border: 1px solid #777;
+}
+/* Jack MIC */
+.rr-jack {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: #111; border: 1.5px solid #666;
+}
+/* Ports réseau avec LED */
+.rr-port {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 2px; cursor: default; position: relative;
+}
+.rr-port-led {
+  width: 6px !important; height: 6px !important;
+  transition: background .4s, box-shadow .4s;
+}
+/* Étiquettes sombres sur chassis clair */
+.rr-label {
+  font-size: .46rem; color: #333; font-weight: 700;
+  letter-spacing: .2px; text-transform: uppercase;
+  white-space: nowrap; text-align: center; line-height: 1.2;
+}
+.rr-misc-port { display:flex; flex-direction:column; align-items:center; gap:3px; }
+.rr-misc-port .rr-label { color: #444; }
+/* Bloc ports empilés (GE1-GE7) */
+.rr-stack-group { display:flex; flex-direction:column; gap:3px; }
+.rr-stack-row   { display:flex; gap:3px; }
+.rr-port--phantom { visibility:hidden; }
+/* Section WAN */
+.rr-wan-section {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  border: 1px solid rgba(180,0,0,.35); border-radius: 3px;
+  padding: 3px 5px;
+  background: rgba(180,0,0,.06);
+}
+.rr-wan-badge { font-size:.42rem; color:#cc0000; font-weight:800; letter-spacing:1.5px; margin-bottom:1px; }
+.rr-wan-ports, .rr-sfp-ports { display:flex; gap:3px; }
+/* Section SFP */
+.rr-sfp-section {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  border: 1px solid rgba(0,0,0,.15); border-radius: 3px;
+  padding: 3px 5px; background: rgba(0,0,0,.04);
+}
+.rr-sfp-badge { font-size:.42rem; color:#555; font-weight:700; letter-spacing:1px; margin-bottom:1px; }
+/* Alimentation */
+.rr-power {
+  font-size:.47rem; color:#444; font-weight:700; text-align:center;
+  white-space:nowrap; border:1.5px solid #888; border-radius:3px;
+  padding:3px 5px; line-height:1.4; background:rgba(0,0,0,.06);
+}
+/* Tooltip */
+.rr-port:hover::after {
+  content: attr(data-tooltip);
+  position: absolute; bottom: 100%; left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  background: #111; border: 1px solid #333;
+  border-radius: 5px; padding: 4px 8px;
+  font-size: .72rem; color: #ccc; white-space: nowrap;
+  pointer-events: none; z-index: 10;
+}
+@media (max-width: 600px) {
+  .rr-chassis { gap: 4px; padding: 14px 8px 8px; }
+  .rr-rj45 { width: 19px; height: 15px; }
+  .rr-label { font-size: .4rem; }
+  .rr-brand-bar { display: none; }
+}
+</style>
+
 <!-- Toolbar -->
 <div class="toolbar">
   <span class="toolbar__label">{{ _('Période :') }}</span>
@@ -134,6 +596,212 @@
 const ifaceIds = [{% for i in ifaces %}{{ i.if_index }},{% endfor %}];
 const charts   = {};
 let currentHours = 1;
+
+// ── Panel routeur ─────────────────────────────────────────────────────────────
+// Mapping : label LED → fragments de noms d'interface à matcher (insensible à la casse)
+const LED_MAP = {
+  'INET': ['wan', 'dialer', 'pppoe'],   // GE8/GE9 gérés séparément ; vlanif exclus (trop générique)
+  'WWAN': ['cellular', 'lte', 'wwan', '4g', 'lte0'],
+  'GE0':  ['ge0/0/0', 'gigabitethernet0/0/0'],
+  'GE1':  ['ge0/0/1', 'gigabitethernet0/0/1'],
+  'GE2':  ['ge0/0/2', 'gigabitethernet0/0/2'],
+  'GE3':  ['ge0/0/3', 'gigabitethernet0/0/3'],
+  'GE4':  ['ge0/0/4', 'gigabitethernet0/0/4'],
+  'GE5':  ['ge0/0/5', 'gigabitethernet0/0/5'],
+  'GE6':  ['ge0/0/6', 'gigabitethernet0/0/6'],
+  'GE7':  ['ge0/0/7', 'gigabitethernet0/0/7'],
+  'GE8':  ['ge0/0/8', 'gigabitethernet0/0/8'],
+  'GE9':  ['ge0/0/9', 'gigabitethernet0/0/9'],
+  '24G':  ['wlan-radio0/0/0', 'radio0', 'wlan0', 'wifi0', '2.4g', 'wlan-bss0'],
+  '5G':   ['wlan-radio0/0/1', 'radio1', 'wlan1', 'wifi1', '5g',   'wlan-bss1'],
+  'CTRL': ['meth0/0/0', 'meth0', 'management'],
+};
+
+function matchLed(ifName) {
+  const n = ifName.toLowerCase();
+  for (const [led, patterns] of Object.entries(LED_MAP)) {
+    if (patterns.some(p => n.includes(p))) return led;
+  }
+  return null;
+}
+
+function switchFace(face) {
+  document.getElementById('router-face').style.display = face === 'front' ? '' : 'none';
+  document.getElementById('router-rear').style.display = face === 'rear'  ? '' : 'none';
+  document.querySelectorAll('.rp-tab').forEach((t, i) => {
+    t.classList.toggle('rp-tab--active',
+      (face === 'front' && i === 0) || (face === 'rear' && i === 1));
+  });
+}
+
+function setLed(id, state, tooltip) {
+  const item = document.getElementById('led-' + id);
+  if (!item) return;
+  const dot = item.querySelector('.rp-led');
+  if (!dot) return;
+  dot.className = 'rp-led rp-led--' + state;
+  if (tooltip) item.setAttribute('data-tooltip', tooltip);
+}
+
+function setRearLed(geId, state, tooltip) {
+  const el = document.getElementById('rr-' + geId);
+  if (!el) return;
+  const dot = el.querySelector('.rr-port-led');
+  if (!dot) return;
+  dot.className = 'rr-port-led rp-led rp-led--' + state;
+  if (tooltip !== undefined) el.setAttribute('data-tooltip', tooltip);
+}
+
+function setRssi(level) {
+  // level: 0-4
+  const bars = ['rssi-b1','rssi-b2','rssi-b3','rssi-b4'];
+  bars.forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = 'rp-rssi-bar' + (i < level
+      ? (level <= 1 ? ' active-low' : level <= 2 ? ' active-med' : ' active')
+      : '');
+  });
+}
+
+function updatePanel(ifaces) {
+  // Réinitialiser tous les LEDs mappables (SYS non inclus — mis à jour par loadLtePanel)
+  Object.keys(LED_MAP).forEach(id => setLed(id, 'off', ''));
+  setLed('PWR', 'green', 'Power ON');
+
+  // Priorités : on garde le meilleur état si plusieurs interfaces matchent le même LED
+  // (ex: INET peut avoir GE0/0/8 UP + GE0/0/9 DOWN → on garde UP)
+  const _prio = { activity: 4, green: 3, warn: 2, error: 2, off: 1, unknown: 0 };
+  const best  = {};
+  let wwanUp  = false;
+
+  ifaces.forEach(iface => {
+    const name  = iface.if_name || '';
+    const status = iface.if_status;
+    const inBps  = iface.in_bps  || 0;
+    const outBps = iface.out_bps || 0;
+    const hasTraffic = (inBps + outBps) > 1000;
+    const label = matchLed(name);
+    if (!label) return;
+
+    let state, tip;
+    if (status === 1) {
+      state = hasTraffic ? 'activity' : 'green';
+      tip   = name + ' — UP' + (hasTraffic
+        ? ` ↓${iface.in_bps_fmt} ↑${iface.out_bps_fmt}` : '');
+    } else if (status === 2) {
+      state = 'off';
+      tip   = name + ' — DOWN';
+    } else {
+      state = 'error';
+      tip   = name + ' — ERROR';
+    }
+
+    if (!best[label] || (_prio[state] ?? 0) > (_prio[best[label].state] ?? 0)) {
+      best[label] = { state, tip };
+    }
+    if (label === 'WWAN' && status === 1) wwanUp = true;
+  });
+
+  // INET : meilleur état parmi GE8, GE9, WWAN + tout iface WAN nommée (dialer/pppoe)
+  // GE8/GE9 UP prend toujours le dessus sur un dialer/vlanif DOWN
+  {
+    const wanBests = ['GE8', 'GE9', 'WWAN'].map(k => best[k]).filter(Boolean);
+    if (best['INET']) wanBests.push(best['INET']);
+    if (wanBests.length) {
+      const wanUp  = wanBests.some(b => (_prio[b.state] ?? 0) >= 3);
+      const wanAct = wanBests.some(b => b.state === 'activity');
+      best['INET'] = wanUp
+        ? { state: wanAct ? 'activity' : 'green', tip: 'WAN up (GE8/GE9)' }
+        : { state: 'off', tip: 'WAN down' };
+    }
+  }
+
+  Object.entries(best).forEach(([lbl, { state, tip }]) => setLed(lbl, state, tip));
+
+  // Sync face arrière : GE0–GE9
+  ['GE0','GE1','GE2','GE3','GE4','GE5','GE6','GE7','GE8','GE9'].forEach(id => {
+    const b = best[id];
+    setRearLed(id, b ? b.state : 'off', b ? b.tip : '');
+  });
+
+  if (wwanUp) setRssi(3); else setRssi(0);
+
+  const now = new Date();
+  const ts  = now.toLocaleTimeString('fr-FR');
+  const el  = document.getElementById('panel-updated');
+  if (el) el.textContent = '{{ _("Mis à jour") }} ' + ts;
+}
+
+function loadPanel() {
+  fetch('/api/interfaces')
+    .then(r => r.json())
+    .then(updatePanel)
+    .catch(() => {});
+}
+
+function loadLtePanel() {
+  fetch('/api/lte')
+    .then(r => r.json())
+    .then(data => {
+      if (!data) return;
+      const lte    = data.latest;
+      const radios = data.wifi_radios || [];
+
+      // ── Statut système (hwEntityFaultStatus) ─────────────────────
+      const fs = data.fault_status;
+      if (fs === null || fs === undefined) {
+        setLed('SYS', 'unknown', 'Statut inconnu');
+      } else if (fs <= 1) {
+        setLed('SYS', 'green', 'Système OK');
+      } else if (fs === 2) {
+        setLed('SYS', 'warn', 'Avertissement système');
+      } else {
+        setLed('SYS', 'error', `Alarme système (niveau ${fs})`);
+      }
+
+      // ── RSSI réel ────────────────────────────────────────────────
+      if (lte && lte.rssi !== null && lte.rssi !== undefined) {
+        const rssi = lte.rssi; // valeur négative en dBm, ex: -75
+        let bars = 0;
+        if      (rssi >= -65) bars = 4;
+        else if (rssi >= -75) bars = 3;
+        else if (rssi >= -85) bars = 2;
+        else if (rssi >= -95) bars = 1;
+        setRssi(bars);
+
+        // Tooltip WWAN enrichi
+        const wwan = document.getElementById('led-WWAN');
+        if (wwan) {
+          const mode = lte.access_mode || '';
+          const op   = lte.operator   || '';
+          const rsrp = lte.rsrp !== null ? `RSRP ${lte.rsrp} dBm` : '';
+          const sinr = lte.sinr !== null ? `SINR ${lte.sinr} dB`  : '';
+          wwan.setAttribute('data-tooltip',
+            [op, mode, `RSSI ${rssi} dBm`, rsrp, sinr].filter(Boolean).join(' · ')
+          );
+        }
+      }
+
+      // ── WiFi radios ───────────────────────────────────────────────
+      radios.forEach(r => {
+        const is5g   = (r.mode || '').includes('ac') || (r.mode || '').includes('ax')
+                     || r.radio_index === 1;
+        const ledId  = is5g ? '5G' : '24G';
+        const tip    = `Radio ${r.radio_index} · Ch ${r.channel ?? '?'} · ${r.tx_power_dbm ?? '?'} dBm`;
+        const ledEl  = document.getElementById('led-' + ledId);
+        if (ledEl) ledEl.setAttribute('data-tooltip', tip);
+      });
+    })
+    .catch(() => {});
+}
+
+// Chargement initial + refresh
+loadPanel();
+loadLtePanel();
+setInterval(loadPanel,    10000);
+setInterval(loadLtePanel, 30000);
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Construire les charts
 function fmtBpsTip(ctx) {

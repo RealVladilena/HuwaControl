@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Vue globale') }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title"><i class="fa-solid fa-table-cells-large"></i> {{ _('Vue globale') }}</h1>
+  <span class="page-subtitle" id="dash-subtitle">{{ _('Synthèse de tous les routeurs') }}</span>
+</div>
+
+<!-- Barre de synthèse -->
+<div id="dash-summary" class="dash-summary" style="display:none">
+  <span id="dash-total"  class="dash-summary__item"></span>
+  <span id="dash-ok"     class="dash-summary__item dash-summary__item--ok"></span>
+  <span id="dash-warn"   class="dash-summary__item dash-summary__item--warn"></span>
+  <span id="dash-error"  class="dash-summary__item dash-summary__item--error"></span>
+  <span id="dash-maint"  class="dash-summary__item dash-summary__item--maint"></span>
+  <span class="dash-summary__refresh txt-muted" id="dash-refresh-label"></span>
+</div>
+
+<div id="dashboard-grid" class="dashboard-grid">
+  <div class="txt-muted txt-center" style="grid-column:1/-1;padding:48px">
+    <i class="fa-solid fa-spinner fa-spin"></i> {{ _('Chargement…') }}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtPct(v) {
+  return (v != null) ? Math.round(v) + '%' : '—';
+}
+
+function fmtSla(v) {
+  return (v != null) ? v.toFixed(2) + '%' : '—';
+}
+
+function fmtTemp(v) {
+  return (v != null) ? Math.round(v) + '°C' : '—';
+}
+
+function fmtAge(last_seen) {
+  if (!last_seen) return '—';
+  const mins = Math.floor((Date.now() / 1000 - last_seen) / 60);
+  if (mins < 1)  return '< 1 min';
+  if (mins < 60) return mins + ' min';
+  const h = Math.floor(mins / 60);
+  return h + 'h ' + (mins % 60) + 'min';
+}
+
+function barColor(pct) {
+  if (pct == null) return 'var(--clr-muted,#555)';
+  if (pct >= 90)   return 'var(--clr-down,#ed4245)';
+  if (pct >= 70)   return '#FEE75C';
+  return 'var(--clr-up,#57f287)';
+}
+
+function statusBadge(st, inMaint) {
+  if (inMaint) return '<span class="badge badge--neutral"><i class="fa-solid fa-wrench"></i> Maintenance</span>';
+  if (st === 'ok')   return '<span class="badge badge--up">OK</span>';
+  if (st === 'warn') return '<span class="badge" style="background:rgba(254,231,92,.15);color:#FEE75C"><i class="fa-solid fa-triangle-exclamation"></i> Alerte</span>';
+  return '<span class="badge badge--down"><i class="fa-solid fa-circle-xmark"></i> Erreur</span>';
+}
+
+function cardBorderColor(st, inMaint) {
+  if (inMaint)       return 'rgba(150,150,150,.35)';
+  if (st === 'ok')   return 'rgba(87,242,135,.3)';
+  if (st === 'warn') return 'rgba(254,231,92,.35)';
+  return 'rgba(237,66,69,.45)';
+}
+
+// ── Construction d'une carte ────────────────────────────────────────────────
+
+function buildCard(r) {
+  const cpuW  = Math.min(r.cpu  ?? 0, 100);
+  const memW  = Math.min(r.mem  ?? 0, 100);
+  const border = cardBorderColor(r.status, r.in_maintenance);
+
+  const slaHtml = (r.wan_sla != null)
+    ? `<span class="badge badge--neutral" style="font-size:.73rem">WAN SLA ${fmtSla(r.wan_sla)}</span>`
+    : '';
+
+  const errHtml  = r.errors   ? `<span class="badge badge--down"    style="font-size:.73rem"><i class="fa-solid fa-circle-xmark"></i> ${r.errors}</span>`   : '';
+  const warnHtml = r.warnings ? `<span class="badge" style="font-size:.73rem;background:rgba(254,231,92,.15);color:#FEE75C"><i class="fa-solid fa-triangle-exclamation"></i> ${r.warnings}</span>` : '';
+
+  return `
+<div class="card dash-card" style="border-color:${border}" data-id="${r.id}" data-status="${r.status}">
+  <div class="dash-card__head">
+    <span class="dash-card__name" title="${esc(r.name)}">${esc(r.name)}</span>
+    ${statusBadge(r.status, r.in_maintenance)}
+  </div>
+  <div class="txt-muted" style="font-size:.77rem;margin-bottom:10px">
+    <i class="fa-solid fa-network-wired" style="margin-right:3px"></i>${esc(r.ip)}
+    &nbsp;·&nbsp;
+    <i class="fa-regular fa-clock" style="margin-right:3px"></i>${fmtAge(r.last_seen)}
+  </div>
+
+  <div class="dash-metrics">
+    <div class="dash-metric">
+      <span class="dash-metric__label">CPU</span>
+      <span class="dash-metric__val">${fmtPct(r.cpu)}</span>
+      <div class="kpi-card__bar" style="height:3px;margin-top:3px;border-radius:2px;background:var(--surface-3,#2a2a2a)">
+        <div style="height:100%;width:${cpuW}%;background:${barColor(r.cpu)};border-radius:2px;transition:width .4s"></div>
+      </div>
+    </div>
+    <div class="dash-metric">
+      <span class="dash-metric__label">RAM</span>
+      <span class="dash-metric__val">${fmtPct(r.mem)}</span>
+      <div class="kpi-card__bar" style="height:3px;margin-top:3px;border-radius:2px;background:var(--surface-3,#2a2a2a)">
+        <div style="height:100%;width:${memW}%;background:${barColor(r.mem)};border-radius:2px;transition:width .4s"></div>
+      </div>
+    </div>
+    <div class="dash-metric">
+      <span class="dash-metric__label">Temp.</span>
+      <span class="dash-metric__val">${fmtTemp(r.temp)}</span>
+    </div>
+    <div class="dash-metric">
+      <span class="dash-metric__label">Uptime</span>
+      <span class="dash-metric__val" style="font-size:.8rem">${esc(r.uptime || '—')}</span>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-top:8px;font-size:.83rem">
+    <i class="fa-solid fa-plug txt-muted"></i>
+    <span class="txt-green" style="font-weight:700">${r.ifaces_up}</span>
+    <span class="txt-muted">/ ${r.ifaces_total} UP</span>
+    ${slaHtml}
+    ${errHtml}
+    ${warnHtml}
+  </div>
+
+  <div class="dash-card__footer">
+    <a href="/?router_id=${r.id}" class="btn btn--ghost" style="font-size:.78rem;padding:3px 8px">
+      <i class="fa-solid fa-gauge-high"></i> Aperçu
+    </a>
+    <a href="/interfaces?router_id=${r.id}" class="btn btn--ghost" style="font-size:.78rem;padding:3px 8px">
+      <i class="fa-solid fa-diagram-project"></i> Interfaces
+    </a>
+    <a href="/events?router_id=${r.id}" class="btn btn--ghost" style="font-size:.78rem;padding:3px 8px">
+      <i class="fa-solid fa-bell"></i> Événements
+    </a>
+  </div>
+</div>`;
+}
+
+// ── Résumé global ──────────────────────────────────────────────────────────
+
+function updateSummary(data) {
+  const total = data.length;
+  const ok    = data.filter(r => !r.in_maintenance && r.status === 'ok').length;
+  const warn  = data.filter(r => !r.in_maintenance && r.status === 'warn').length;
+  const err   = data.filter(r => !r.in_maintenance && r.status === 'error').length;
+  const maint = data.filter(r => r.in_maintenance).length;
+
+  document.getElementById('dash-total').textContent  = `${total} routeur${total > 1 ? 's' : ''}`;
+  document.getElementById('dash-ok').textContent     = `✓ ${ok} OK`;
+  document.getElementById('dash-warn').textContent   = warn  ? `⚠ ${warn} alerte${warn > 1 ? 's' : ''}` : '';
+  document.getElementById('dash-error').textContent  = err   ? `✗ ${err} erreur${err > 1 ? 's' : ''}` : '';
+  document.getElementById('dash-maint').textContent  = maint ? `🔧 ${maint} maintenance` : '';
+
+  const now = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.getElementById('dash-refresh-label').textContent = `Mise à jour ${now}`;
+  document.getElementById('dash-summary').style.display = 'flex';
+}
+
+// ── Chargement ─────────────────────────────────────────────────────────────
+
+let _prevData = null;
+
+function loadDashboard() {
+  fetch('/api/dashboard')
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(data => {
+      const grid = document.getElementById('dashboard-grid');
+
+      if (!data.length) {
+        grid.innerHTML = '<div class="txt-muted txt-center" style="grid-column:1/-1;padding:48px"><i class="fa-solid fa-server" style="font-size:2rem;margin-bottom:12px;display:block"></i>Aucun routeur actif.</div>';
+        return;
+      }
+
+      // Mise à jour sélective : rebuild seulement si les données ont changé
+      const newHash = JSON.stringify(data.map(r =>
+        [r.id, r.status, r.cpu, r.mem, r.temp, r.ifaces_up, r.errors, r.warnings, r.in_maintenance, r.last_seen]
+      ));
+      if (newHash !== _prevData) {
+        _prevData = newHash;
+        grid.innerHTML = data.map(buildCard).join('');
+      }
+
+      updateSummary(data);
+    })
+    .catch(() => {
+      const grid = document.getElementById('dashboard-grid');
+      // Ne pas écraser les données existantes en cas d'erreur réseau temporaire
+      if (!_prevData) {
+        grid.innerHTML = '<div class="txt-muted txt-center" style="grid-column:1/-1;padding:48px"><i class="fa-solid fa-triangle-exclamation"></i> Erreur de chargement</div>';
+      }
+    });
+}
+
+loadDashboard();
+setInterval(loadDashboard, 30000);
+document.addEventListener('routerChanged', loadDashboard);
+</script>
+{% endblock %}
