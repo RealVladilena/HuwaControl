@@ -653,7 +653,9 @@ canvas { display: block; width: 100% !important; }
 @media (max-width: 480px) {
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .kpi-card__value { font-size: 15px; }
-  .topbar__logo-text { font-size: 14px; }
+  .topbar__logo-text { display: none; }
+  .topbar__lang { display: none; }
+  .router-select { max-width: 130px; }
   #pollBtn { display: none; }
 
   /* Syslog stats : 1 colonne sur très petit écran */
