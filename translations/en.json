@@ -520,5 +520,28 @@
   "Aucune donnée": "No data",
   "Erreur de chargement": "Load error",
   "Ajouter": "Add",
-  "Erreur réseau": "Network error"
+  "Erreur réseau": "Network error",
+
+  "── Mot de passe oublié / réinitialisation ──────────────────────────────────": "",
+  "Mot de passe oublié ?": "Forgot password?",
+  "Mot de passe oublié": "Forgot password",
+  "Réinitialisation du mot de passe": "Password reset",
+  "Réinitialisation de mot de passe": "Password reset",
+  "Entrez votre adresse email pour recevoir un lien de réinitialisation.": "Enter your email address to receive a reset link.",
+  "Si un compte correspond à cet email, un lien de réinitialisation a été envoyé.": "If an account matches this email, a reset link has been sent.",
+  "Envoyer le lien": "Send link",
+  "Retour à la connexion": "Back to login",
+  "Réinitialiser le mot de passe": "Reset password",
+  "Ce lien est invalide ou a expiré.": "This link is invalid or has expired.",
+  "Mot de passe modifié avec succès.": "Password changed successfully.",
+
+  "── Fonctionnalités (settings) ───────────────────────────────────────────────": "",
+  "Fonctionnalités": "Features",
+  "Autoriser les utilisateurs à réinitialiser leur mot de passe par email (SMTP requis)": "Allow users to reset their password via email (SMTP required)",
+  "Vérification des mises à jour": "Update check",
+  "Notifier les admins quand une nouvelle version est disponible sur GitHub": "Notify admins when a new version is available on GitHub",
+
+  "── Bannière de mise à jour ──────────────────────────────────────────────────": "",
+  "Nouvelle version disponible sur": "New version available on",
+  "pour mettre à jour": "to update"
 }

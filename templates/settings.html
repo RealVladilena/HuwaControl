@@ -80,6 +80,44 @@
   </div>
 </div>
 
+{% if current_user.is_admin %}
+<!-- Fonctionnalités -->
+<div class="card mt-4">
+  <div class="card__header"><span><i class="fa-solid fa-toggle-on"></i> {{ _('Fonctionnalités') }}</span></div>
+  <div class="card__body">
+
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
+      <div>
+        <div style="font-weight:600;color:#ccc;font-size:.9rem">{{ _('Réinitialisation de mot de passe') }}</div>
+        <div class="txt-muted" style="font-size:.8rem;margin-top:3px">{{ _('Autoriser les utilisateurs à réinitialiser leur mot de passe par email (SMTP requis)') }}</div>
+      </div>
+      <label class="form-check" style="margin:0;flex-shrink:0">
+        <input type="checkbox" id="feat-reset-pwd"
+               {% if _cfg.get('password_reset_enabled') == '1' %}checked{% endif %}>
+        <span></span>
+      </label>
+    </div>
+
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:10px 0">
+      <div>
+        <div style="font-weight:600;color:#ccc;font-size:.9rem">{{ _('Vérification des mises à jour') }}</div>
+        <div class="txt-muted" style="font-size:.8rem;margin-top:3px">{{ _('Notifier les admins quand une nouvelle version est disponible sur GitHub') }}</div>
+      </div>
+      <label class="form-check" style="margin:0;flex-shrink:0">
+        <input type="checkbox" id="feat-update-check"
+               {% if _cfg.get('update_check_enabled', '1') != '0' %}checked{% endif %}>
+        <span></span>
+      </label>
+    </div>
+
+    <div id="feat-msg" style="font-size:.85rem;margin-top:4px"></div>
+    <button class="btn btn--primary mt-4" id="btn-save-feat">
+      <i class="fa-solid fa-floppy-disk"></i> {{ _('Enregistrer') }}
+    </button>
+  </div>
+</div>
+{% endif %}
+
 <!-- Cibles Ping -->
 <div class="card mt-4">
   <div class="card__header">
@@ -147,7 +185,7 @@
     </div>
     <div class="card__body card__body--no-pad">
       <table class="table">
-        <thead><tr><th>{{ _('Utilisateur') }}</th><th>{{ _('Rôle') }}</th><th></th></tr></thead>
+        <thead><tr><th>{{ _('Utilisateur') }}</th><th>{{ _('Rôle') }}</th><th>Email</th><th></th></tr></thead>
         <tbody>
           {% for u in users %}
           <tr>
@@ -155,6 +193,13 @@
             <td>
               {% if u.is_admin %}<span class="badge badge--up">Admin</span>
               {% else %}<span class="badge badge--neutral">{{ _('Lecture') }}</span>{% endif %}
+            </td>
+            <td>
+              <input class="form-input" type="email" placeholder="email@example.com"
+                     style="font-size:.8rem;padding:5px 8px;min-width:180px"
+                     value="{{ u.email or '' }}"
+                     onblur="saveUserEmail({{ u.id }}, this.value)"
+                     onkeydown="if(event.key==='Enter'){this.blur()}">
             </td>
             <td style="display:flex;gap:6px;align-items:center">
               {% if not u.is_admin %}
@@ -312,6 +357,33 @@ document.getElementById('btn-save-cfg')?.addEventListener('click', () => {
     if (typeof showToast !== 'undefined') showToast(d.ok ? '{{ _("Paramètres enregistrés") }}' : '{{ _("Erreur") }}', d.ok ? 'success' : 'error');
   });
 });
+
+// ── Fonctionnalités ───────────────────────────────────────────────────────────
+document.getElementById('btn-save-feat')?.addEventListener('click', () => {
+  const msg = document.getElementById('feat-msg');
+  fetch('/api/settings', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      password_reset_enabled: document.getElementById('feat-reset-pwd')?.checked ? '1' : '0',
+      update_check_enabled:   document.getElementById('feat-update-check')?.checked ? '1' : '0',
+    })
+  })
+  .then(r => r.json())
+  .then(d => {
+    msg.textContent = d.ok ? '✓ {{ _("Paramètres enregistrés.") }}' : '✗ {{ _("Erreur") }}';
+    msg.style.color = d.ok ? '#00cc55' : '#ff4444';
+  });
+});
+
+// ── Email utilisateur ─────────────────────────────────────────────────────────
+function saveUserEmail(uid, email) {
+  fetch(`/api/users/${uid}/email`, {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ email })
+  });
+}
 
 // ── Cibles Ping ───────────────────────────────────────────────────────────────
 function closePingModal() { document.getElementById('ping-modal').classList.remove('active'); }

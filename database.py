@@ -2,7 +2,9 @@
 Couche d'accès PostgreSQL — HuwaControl.
 Gère : users, routers, metrics (system + interfaces + bps).
 """
+import hashlib
 import logging
+import secrets
 import time
 from contextlib import contextmanager
 
@@ -332,6 +334,27 @@ def init_db() -> None:
                 _cur(conn).execute(
                     f"ALTER TABLE routers ADD COLUMN {col} {definition}"
                 )
+
+        # Migration : colonne email sur users
+        cur = _cur(conn)
+        cur.execute(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_name='users' AND column_name='email'"
+        )
+        if not cur.fetchone():
+            _cur(conn).execute("ALTER TABLE users ADD COLUMN email TEXT")
+            log.info("Migration users: colonne email ajoutée")
+
+        # Table de tokens de réinitialisation de mot de passe
+        _cur(conn).execute("""
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                id         SERIAL PRIMARY KEY,
+                user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                token_hash TEXT    NOT NULL UNIQUE,
+                expires_at BIGINT  NOT NULL,
+                used       BOOLEAN NOT NULL DEFAULT false
+            );
+        """)
     log.info("Schéma DB initialisé")
 
 
@@ -397,13 +420,82 @@ def update_password(user_id: int, new_password: str) -> None:
 def get_all_users() -> list:
     with get_db() as conn:
         cur = _cur(conn)
-        cur.execute("SELECT id, username, is_admin, created_at FROM users ORDER BY id")
+        cur.execute("SELECT id, username, is_admin, created_at, email FROM users ORDER BY id")
         return [dict(r) for r in cur.fetchall()]
 
 
 def delete_user(user_id: int) -> None:
     with get_db() as conn:
         _cur(conn).execute("DELETE FROM users WHERE id = %s", (user_id,))
+
+
+def get_user_by_email(email: str) -> dict | None:
+    with get_db() as conn:
+        cur = _cur(conn)
+        cur.execute("SELECT * FROM users WHERE lower(email) = lower(%s)", (email,))
+        row = cur.fetchone()
+    return dict(row) if row else None
+
+
+def set_user_email(user_id: int, email: str | None) -> None:
+    val = email.strip().lower() if email else None
+    with get_db() as conn:
+        _cur(conn).execute(
+            "UPDATE users SET email = %s WHERE id = %s",
+            (val, user_id)
+        )
+
+
+def create_reset_token(user_id: int) -> str:
+    """Génère un token de réinitialisation (30 min). Retourne le token brut."""
+    raw    = secrets.token_urlsafe(32)
+    hashed = hashlib.sha256(raw.encode()).hexdigest()
+    expires = int(time.time()) + 1800
+    with get_db() as conn:
+        # Invalider les tokens précédents de cet utilisateur
+        _cur(conn).execute(
+            "UPDATE password_reset_tokens SET used=true WHERE user_id=%s AND used=false",
+            (user_id,)
+        )
+        _cur(conn).execute(
+            "INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) "
+            "VALUES (%s, %s, %s)",
+            (user_id, hashed, expires)
+        )
+    return raw
+
+
+def validate_reset_token(raw_token: str) -> int | None:
+    """Vérifie sans consommer. Retourne user_id si valide, None sinon."""
+    hashed = hashlib.sha256(raw_token.encode()).hexdigest()
+    with get_db() as conn:
+        cur = _cur(conn)
+        cur.execute(
+            "SELECT user_id, expires_at FROM password_reset_tokens "
+            "WHERE token_hash=%s AND used=false",
+            (hashed,)
+        )
+        row = cur.fetchone()
+    if not row:
+        return None
+    if int(time.time()) > row["expires_at"]:
+        return None
+    return row["user_id"]
+
+
+def consume_reset_token(raw_token: str) -> int | None:
+    """Consomme le token. Retourne user_id si succès, None sinon."""
+    hashed = hashlib.sha256(raw_token.encode()).hexdigest()
+    with get_db() as conn:
+        cur = _cur(conn)
+        cur.execute(
+            "UPDATE password_reset_tokens SET used=true "
+            "WHERE token_hash=%s AND used=false AND expires_at > %s "
+            "RETURNING user_id",
+            (hashed, int(time.time()))
+        )
+        row = cur.fetchone()
+    return row["user_id"] if row else None
 
 
 # ─── Routeurs ─────────────────────────────────────────────────────────────────

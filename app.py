@@ -1,7 +1,11 @@
 import csv
+import hashlib
 import io
+import json
 import logging
+import secrets
 import time
+import urllib.request as _urllib_req
 from datetime import datetime
 from urllib.parse import urlparse
 
@@ -116,6 +120,38 @@ def _clear_login_rate(ip: str):
     _login_attempts.pop(ip, None)
 
 
+# ─── Vérification des mises à jour GitHub ─────────────────────────────────────
+
+_update_available: bool = False
+
+
+def check_github_version() -> None:
+    global _update_available
+    try:
+        cfg = db.get_settings()
+    except Exception:
+        return
+    if cfg.get("update_check_enabled", "1") == "0":
+        _update_available = False
+        return
+    try:
+        req = _urllib_req.Request(
+            "https://api.github.com/repos/RealVladilena/HuwaControl/releases/latest",
+            headers={"Accept": "application/vnd.github+json",
+                     "User-Agent": "HuwaControl"},
+        )
+        with _urllib_req.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode())
+        latest  = data.get("tag_name", "").lstrip("v")
+        current = config.APP_VERSION.lstrip("v")
+        _update_available = bool(latest) and latest != current
+        db.set_setting("_latest_github_version", latest)
+        log.info("GitHub update check: latest=%s current=%s available=%s",
+                 latest, current, _update_available)
+    except Exception as e:
+        log.warning("GitHub update check failed: %s", e)
+
+
 class User(UserMixin):
     def __init__(self, data: dict):
         self.id       = str(data["id"])
@@ -176,7 +212,8 @@ def set_lang(lang: str):
 @app.before_request
 def guard():
     """Redirige vers /setup si aucun utilisateur n'existe encore."""
-    if request.endpoint in ("setup", "static", "login", "logout", "set_lang"):
+    if request.endpoint in ("setup", "static", "login", "logout", "set_lang",
+                            "forgot_password", "reset_password"):
         return None
     if db.needs_setup():
         return redirect(url_for("setup"))
@@ -194,11 +231,12 @@ def inject_routers():
     def _(text: str) -> str:
         return _i18n.translate(text, lang)
     return {
-        "all_routers":    routers,
-        "APP_VERSION":    config.APP_VERSION,
-        "APP_BUILD_DATE": config.APP_BUILD_DATE,
-        "_":              _,
-        "current_lang":   lang,
+        "all_routers":      routers,
+        "APP_VERSION":      config.APP_VERSION,
+        "APP_BUILD_DATE":   config.APP_BUILD_DATE,
+        "_":                _,
+        "current_lang":     lang,
+        "update_available": _update_available,
     }
 
 
@@ -335,7 +373,7 @@ def login():
 
             if user_data:
                 _clear_login_rate(ip)
-                login_user(User(user_data), remember=True)
+                login_user(User(user_data), remember=False)
                 db.add_audit(username, "login",
                              f"Connexion depuis {ip}", ip=ip)
                 # Valider le paramètre next pour éviter un open redirect
@@ -351,7 +389,12 @@ def login():
             db.add_audit(username or "?", "login_failed",
                          f"Échec de connexion depuis {ip}", ip=ip)
 
-    return render_template("login.html", error=error, wait_secs=wait_secs)
+    try:
+        reset_enabled = db.get_settings().get("password_reset_enabled", "0") == "1"
+    except Exception:
+        reset_enabled = False
+    return render_template("login.html", error=error, wait_secs=wait_secs,
+                           password_reset_enabled=reset_enabled)
 
 
 @app.route("/logout")
@@ -360,6 +403,85 @@ def logout():
     db.add_audit(current_user.username, "logout", "", ip=request.remote_addr)
     logout_user()
     return redirect(url_for("login"))
+
+
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if current_user.is_authenticated:
+        return redirect(url_for("overview"))
+    try:
+        cfg = db.get_settings()
+    except Exception:
+        cfg = {}
+    if cfg.get("password_reset_enabled", "0") != "1":
+        return redirect(url_for("login"))
+
+    sent = False
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        if email:
+            user = db.get_user_by_email(email)
+            if user and cfg.get("smtp_host"):
+                raw_token = db.create_reset_token(user["id"])
+                reset_url = url_for("reset_password", token=raw_token, _external=True)
+                notifications.send_email(
+                    cfg["smtp_host"],
+                    int(cfg.get("smtp_port", 587)),
+                    cfg.get("smtp_user", ""),
+                    cfg.get("smtp_pass", ""),
+                    cfg.get("smtp_from", ""),
+                    [user["email"]],
+                    "info",
+                    "Réinitialisation de mot de passe — HuwaControl",
+                    f"Cliquez sur ce lien pour réinitialiser votre mot de passe "
+                    f"(valable 30 min) :\n\n{reset_url}",
+                )
+                db.add_audit(user["username"], "password_reset_request",
+                             f"Demande depuis {request.remote_addr}",
+                             ip=request.remote_addr)
+        # Toujours afficher "email envoyé" pour ne pas révéler si le compte existe
+        sent = True
+    return render_template("forgot_password.html", sent=sent)
+
+
+@app.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token: str):
+    if current_user.is_authenticated:
+        return redirect(url_for("overview"))
+    try:
+        cfg = db.get_settings()
+    except Exception:
+        cfg = {}
+    if cfg.get("password_reset_enabled", "0") != "1":
+        return redirect(url_for("login"))
+
+    user_id = db.validate_reset_token(token)
+    if not user_id:
+        return render_template("reset_password.html", invalid=True)
+
+    error = None
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        confirm  = request.form.get("confirm", "")
+        if len(password) < 8:
+            error = "Le mot de passe doit contenir au moins 8 caractères."
+        elif password != confirm:
+            error = "Les mots de passe ne correspondent pas."
+        else:
+            uid = db.consume_reset_token(token)
+            if uid:
+                db.update_password(uid, password)
+                user_data = db.get_user_by_id(uid)
+                db.add_audit(
+                    user_data["username"] if user_data else "?",
+                    "password_reset_done",
+                    f"Mot de passe réinitialisé depuis {request.remote_addr}",
+                    ip=request.remote_addr,
+                )
+                return render_template("reset_password.html", success=True)
+            return render_template("reset_password.html", invalid=True)
+
+    return render_template("reset_password.html", token=token, error=error)
 
 
 # ─── Pages principales ────────────────────────────────────────────────────────
@@ -1531,6 +1653,16 @@ def api_user_perms_delete(uid, rid):
     return ("", 204)
 
 
+@app.route("/api/users/<int:uid>/email", methods=["PUT"])
+@login_required
+def api_user_email(uid):
+    if not current_user.is_admin:
+        return ("", 403)
+    email = (request.json or {}).get("email", "").strip()
+    db.set_user_email(uid, email or None)
+    return jsonify({"ok": True})
+
+
 # ─── Démarrage ────────────────────────────────────────────────────────────────
 
 db.init_pool()
@@ -1552,6 +1684,15 @@ if not db.needs_setup():
         hour=_report_hour, minute=0, id="daily_report", replace_existing=True,
     )
     log.info("Jobs ping + rapport quotidien démarrés")
+
+# Vérification des mises à jour GitHub (toutes les 6h + au démarrage)
+scheduler.add_job(
+    check_github_version, "interval",
+    hours=6, id="github_update_check", replace_existing=True,
+)
+scheduler.add_job(
+    check_github_version, id="github_update_check_init", replace_existing=True,
+)
 
 # Syslog receiver (UDP)
 _syslog_receiver = syslog_recv.SyslogReceiver(port=config.SYSLOG_PORT)

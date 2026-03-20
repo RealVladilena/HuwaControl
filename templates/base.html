@@ -193,6 +193,28 @@
     </nav>
 
     <main class="content">
+      {% if update_available and current_user.is_authenticated and current_user.is_admin %}
+      <div id="update-banner" style="
+        display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+        background:rgba(204,120,0,0.12);
+        border:1px solid rgba(204,120,0,0.30);
+        border-radius:8px;padding:10px 16px;
+        font-size:.84rem;color:#f5a800;
+        margin-bottom:16px;
+      ">
+        <i class="fa-solid fa-circle-up"></i>
+        <span>{{ _('Nouvelle version disponible sur') }}
+          <a href="https://github.com/RealVladilena/HuwaControl/releases" target="_blank" rel="noopener"
+             style="color:#f5a800;font-weight:600">GitHub</a>
+          — <code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:4px">docker pull</code>
+          {{ _('pour mettre à jour') }}
+        </span>
+        <button onclick="document.getElementById('update-banner').style.display='none'"
+                style="background:none;border:none;color:#f5a800;cursor:pointer;margin-left:auto;padding:2px 4px">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      {% endif %}
       {% block content %}{% endblock %}
     </main>
 
