@@ -6,164 +6,687 @@
   <title>{{ _('Installation — HuwaControl') }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    html, body { height: 100%; margin: 0; }
+
+    .setup-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      background: #0d0d0d url("{{ url_for('static', filename='img/login-bg.jpg') }}") center/cover no-repeat fixed;
+      position: relative;
+      padding: 32px 16px 48px;
+      box-sizing: border-box;
+    }
+    .setup-page::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(1px);
+      z-index: 0;
+    }
+    .setup-page::after {
+      content: '';
+      position: fixed;
+      width: 800px; height: 800px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(204,0,0,0.09) 0%, transparent 70%);
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Carte ───────────────────────────────────────────────────── */
+    .setup-card {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 580px;
+      background: rgba(10,10,10,0.58);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(204,0,0,0.22);
+      border-radius: 18px;
+      box-shadow: 0 28px 72px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.04);
+      overflow: hidden;
+    }
+    .setup-topbar {
+      height: 3px;
+      background: linear-gradient(90deg, #cc0000, #ff4444, #cc0000);
+      background-size: 200% 100%;
+      animation: shimmer 3s ease-in-out infinite;
+    }
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% 0%; }
+      50%       { background-position: 100% 0%; }
+    }
+    .setup-inner { padding: 32px 36px 28px; }
+
+    /* ── Logo ────────────────────────────────────────────────────── */
+    .setup-logo {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 8px;
+      margin-bottom: 26px;
+    }
+    .setup-logo__icon {
+      width: 52px; height: 52px; border-radius: 13px;
+      background: rgba(204,0,0,0.18);
+      border: 1px solid rgba(204,0,0,0.35);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; color: #cc0000;
+    }
+    .setup-logo__name { font-size: 1.3rem; font-weight: 700; color: #fff; letter-spacing: -.3px; }
+    .setup-logo__sub  { font-size: .72rem; color: #555; letter-spacing: 1.4px; text-transform: uppercase; margin-top: -4px; }
+
+    /* ── Stepper ─────────────────────────────────────────────────── */
+    .stepper {
+      display: flex; align-items: center;
+      margin-bottom: 28px;
+    }
+    .stepper__item {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 5px; flex: 1; position: relative;
+    }
+    .stepper__circle {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.12);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .78rem; font-weight: 700; color: #555;
+      background: rgba(255,255,255,0.04);
+      transition: all .3s;
+      position: relative; z-index: 1;
+    }
+    .stepper__label {
+      font-size: .67rem; font-weight: 600; color: #444;
+      text-transform: uppercase; letter-spacing: .5px;
+      white-space: nowrap; transition: color .3s;
+    }
+    .stepper__optional {
+      font-size: .62rem; color: #333; font-style: italic;
+      letter-spacing: 0; text-transform: none;
+      margin-top: -3px;
+    }
+    .stepper__line {
+      flex: 1; height: 1px;
+      background: rgba(255,255,255,0.08);
+      margin-bottom: 18px; /* align with circle center */
+      transition: background .3s;
+    }
+    /* Active step */
+    .stepper__item.is-active .stepper__circle {
+      border-color: #cc0000;
+      background: rgba(204,0,0,0.18);
+      color: #cc0000;
+      box-shadow: 0 0 0 3px rgba(204,0,0,0.12);
+    }
+    .stepper__item.is-active .stepper__label { color: #ddd; }
+    /* Done step */
+    .stepper__item.is-done .stepper__circle {
+      border-color: rgba(204,0,0,0.5);
+      background: rgba(204,0,0,0.14);
+      color: #cc0000;
+    }
+    .stepper__item.is-done .stepper__label { color: #666; }
+    .stepper__line.is-done { background: rgba(204,0,0,0.3); }
+
+    /* ── Panneaux ────────────────────────────────────────────────── */
+    .step-panel { display: none; }
+    .step-panel.is-active { display: block; }
+
+    /* ── Section ─────────────────────────────────────────────────── */
+    .s-section { margin-bottom: 20px; }
+    .s-section__head {
+      display: flex; align-items: center; gap: 9px;
+      margin-bottom: 14px; padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .s-section__icon {
+      width: 28px; height: 28px; border-radius: 7px;
+      background: rgba(204,0,0,0.14);
+      border: 1px solid rgba(204,0,0,0.28);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .78rem; color: #cc0000; flex-shrink: 0;
+    }
+    .s-section__title {
+      font-size: .78rem; font-weight: 700;
+      color: #bbb; text-transform: uppercase; letter-spacing: .8px;
+    }
+
+    /* ── Champs ──────────────────────────────────────────────────── */
+    .s-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .s-row--full { grid-template-columns: 1fr; }
+    .s-field { display: flex; flex-direction: column; gap: 5px; }
+    .s-label {
+      font-size: .71rem; font-weight: 600; color: #555;
+      text-transform: uppercase; letter-spacing: .6px;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .s-label .req  { color: #cc0000; }
+    .s-label .hint { color: #3d3d3d; font-weight: 400; text-transform: none; letter-spacing: 0; }
+    .s-input {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 8px; color: #ddd; font-size: .88rem;
+      padding: 10px 13px; outline: none;
+      width: 100%; box-sizing: border-box;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .s-input:focus {
+      border-color: rgba(204,0,0,0.55);
+      box-shadow: 0 0 0 3px rgba(204,0,0,0.09);
+    }
+    .s-input::placeholder { color: #383838; }
+    .s-input[type="number"] { -moz-appearance: textfield; }
+    .s-input[type="number"]::-webkit-inner-spin-button { opacity: .3; }
+
+    /* ── Erreur ──────────────────────────────────────────────────── */
+    .s-error {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(204,0,0,0.12);
+      border: 1px solid rgba(204,0,0,0.28);
+      border-radius: 8px; padding: 10px 14px;
+      font-size: .84rem; color: #ff6666;
+      margin-bottom: 20px;
+    }
+
+    /* ── Boutons nav ─────────────────────────────────────────────── */
+    .step-actions {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; margin-top: 20px;
+    }
+    .btn-step-back {
+      background: none; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px; color: #555; font-size: .88rem;
+      padding: 10px 18px; cursor: pointer;
+      display: flex; align-items: center; gap: 7px;
+      transition: border-color .2s, color .2s;
+    }
+    .btn-step-back:hover { border-color: rgba(255,255,255,0.22); color: #888; }
+    .btn-step-next {
+      flex: 1;
+      background: #cc0000; border: none; border-radius: 8px;
+      color: #fff; font-size: .92rem; font-weight: 700;
+      padding: 11px 20px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background .2s, box-shadow .2s, transform .1s;
+    }
+    .btn-step-next:hover  { background: #e81111; box-shadow: 0 4px 18px rgba(204,0,0,0.38); }
+    .btn-step-next:active { transform: scale(.98); }
+    .btn-step-skip {
+      background: none; border: none; color: #3a3a3a;
+      font-size: .82rem; cursor: pointer; padding: 4px 8px;
+      text-decoration: underline; text-underline-offset: 3px;
+      transition: color .2s;
+    }
+    .btn-step-skip:hover { color: #666; }
+
+    /* ── Syslog tutorial (step 3) ────────────────────────────────── */
+    .syslog-info {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 14px;
+      font-size: .84rem;
+    }
+    .syslog-info p { margin: 0 0 10px; color: #888; line-height: 1.6; }
+    .method-badge {
+      display: inline-block;
+      font-size: .68rem; font-weight: 700;
+      padding: 2px 9px; border-radius: 20px;
+      margin-bottom: 8px;
+    }
+    .method-badge--red  { background: #cc0000; color: #fff; }
+    .method-badge--blue { background: #1a6fa8; color: #fff; }
+    .method-title { font-weight: 700; font-size: .88rem; color: #ccc; margin-bottom: 6px; }
+    .code-block {
+      background: #080808;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 7px; padding: 12px 14px;
+      font-family: monospace; font-size: .8rem; line-height: 1.9;
+      margin-bottom: 8px; overflow-x: auto;
+    }
+    .code-block .c  { color: #555; }
+    .code-block .cmd{ color: #4af; }
+    .code-block .val{ color: #f90; }
+    .syslog-steps { display: flex; flex-direction: column; gap: 10px; }
+    .syslog-step  { display: flex; gap: 12px; align-items: flex-start; }
+    .syslog-step__num {
+      min-width: 24px; height: 24px; border-radius: 50%;
+      background: #cc0000;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .72rem; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .syslog-step__title { font-size: .84rem; font-weight: 600; color: #ccc; margin-bottom: 2px; }
+    .syslog-step__desc  { font-size: .79rem; color: #666; line-height: 1.5; }
+    .syslog-step__desc strong { color: #999; }
+    .syslog-step__desc code {
+      background: rgba(255,255,255,.07); border-radius: 3px;
+      padding: 1px 5px; font-size: .75rem;
+    }
+    .info-pill {
+      display: flex; align-items: flex-start; gap: 8px;
+      background: rgba(58,123,213,0.1);
+      border: 1px solid rgba(58,123,213,0.22);
+      border-radius: 7px; padding: 8px 12px;
+      font-size: .78rem; color: #5a9bf5; margin-top: 8px; line-height: 1.5;
+    }
+    .method-divider {
+      border: none; border-top: 1px solid rgba(255,255,255,0.06);
+      margin: 14px 0;
+    }
+
+    /* ── Footer ──────────────────────────────────────────────────── */
+    .setup-footer {
+      padding: 12px 36px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: .72rem; color: #333;
+    }
+    .setup-footer a { text-decoration: none; font-weight: 600; transition: color .2s; }
+    .setup-footer a:hover { color: #888; }
+
+    @media (max-width: 480px) {
+      .s-row { grid-template-columns: 1fr; }
+      .setup-inner { padding: 24px 18px 20px; }
+    }
+  </style>
 </head>
-<body class="auth-body">
+<body class="setup-page">
 
-<div class="auth-wrap">
-  <div class="auth-card setup-card">
+<div class="setup-card">
+  <div class="setup-topbar"></div>
+  <div class="setup-inner">
 
-    <div class="auth-header">
-      <div class="auth-logo">
-        <i class="fa-solid fa-network-wired"></i>
-        <span>HuwaControl</span>
+    <!-- Logo -->
+    <div class="setup-logo">
+      <div class="setup-logo__icon"><i class="fa-solid fa-network-wired"></i></div>
+      <div class="setup-logo__name">HuwaControl</div>
+      <div class="setup-logo__sub">{{ _('Configuration initiale') }}</div>
+    </div>
+
+    <!-- Stepper -->
+    <div class="stepper" id="stepper">
+      <div class="stepper__item is-active" id="step-item-1">
+        <div class="stepper__circle">1</div>
+        <div class="stepper__label">{{ _('Administrateur') }}</div>
       </div>
-      <p class="auth-subtitle">{{ _('Configuration initiale') }}</p>
+      <div class="stepper__line" id="line-1-2"></div>
+      <div class="stepper__item" id="step-item-2">
+        <div class="stepper__circle">2</div>
+        <div class="stepper__label">{{ _('Routeur') }}</div>
+      </div>
+      <div class="stepper__line" id="line-2-3"></div>
+      <div class="stepper__item" id="step-item-3">
+        <div class="stepper__circle"><i class="fa-solid fa-star" style="font-size:.6rem"></i></div>
+        <div class="stepper__label">Syslog</div>
+        <div class="stepper__optional">{{ _('facultatif') }}</div>
+      </div>
     </div>
 
     {% if error %}
-    <div class="alert alert--error"><i class="fa-solid fa-circle-xmark"></i> {{ error }}</div>
+    <div class="s-error">
+      <i class="fa-solid fa-circle-xmark"></i> {{ error }}
+    </div>
     {% endif %}
 
-    <form method="POST" action="/setup">
+    <form method="POST" action="/setup" id="setup-form">
 
-      <!-- ── Admin ──────────────────────────────────────────────── -->
-      <div class="setup-section">
-        <div class="setup-section__title">
-          <i class="fa-solid fa-user-shield"></i> {{ _('Compte administrateur') }}
-        </div>
-        <div class="form-group">
-          <label class="form-label">{{ _('Nom d\'utilisateur') }}</label>
-          <input class="form-input" type="text" name="username"
-                 placeholder="admin" required autofocus
-                 value="{{ request.form.get('username','') }}">
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">{{ _('Mot de passe') }} <span class="txt-muted">(min. 8 car.)</span></label>
-            <input class="form-input" type="password" name="password" required>
+      <!-- ══════════════════════════════════════════════════════════
+           ÉTAPE 1 — Compte administrateur
+      ══════════════════════════════════════════════════════════ -->
+      <div class="step-panel is-active" id="panel-1">
+        <div class="s-section">
+          <div class="s-section__head">
+            <div class="s-section__icon"><i class="fa-solid fa-user-shield"></i></div>
+            <div class="s-section__title">{{ _('Compte administrateur') }}</div>
           </div>
-          <div class="form-group">
-            <label class="form-label">{{ _('Confirmation') }}</label>
-            <input class="form-input" type="password" name="confirm" required>
+
+          <div class="s-row s-row--full">
+            <div class="s-field">
+              <label class="s-label">{{ _('Nom d\'utilisateur') }}</label>
+              <input class="s-input" type="text" name="username"
+                     placeholder="admin" required
+                     value="{{ request.form.get('username','') }}"
+                     id="f-username">
+            </div>
           </div>
+          <div class="s-row">
+            <div class="s-field">
+              <label class="s-label">
+                {{ _('Mot de passe') }}
+                <span class="hint">(min. 8 car.)</span>
+              </label>
+              <input class="s-input" type="password" name="password"
+                     required id="f-password">
+            </div>
+            <div class="s-field">
+              <label class="s-label">{{ _('Confirmation') }}</label>
+              <input class="s-input" type="password" name="confirm"
+                     required id="f-confirm">
+            </div>
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <div></div>
+          <button type="button" class="btn-step-next" id="btn-1-next">
+            {{ _('Suivant') }} <i class="fa-solid fa-arrow-right"></i>
+          </button>
         </div>
       </div>
 
-      <!-- ── Routeur ────────────────────────────────────────────── -->
-      <div class="setup-section">
-        <div class="setup-section__title">
-          <i class="fa-solid fa-router"></i> {{ _('Premier routeur') }}
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">{{ _('Nom') }}</label>
-            <input class="form-input" type="text" name="r_name"
-                   placeholder="Huawei AR651W" required
-                   value="{{ request.form.get('r_name','') }}">
+      <!-- ══════════════════════════════════════════════════════════
+           ÉTAPE 2 — Premier routeur
+      ══════════════════════════════════════════════════════════ -->
+      <div class="step-panel" id="panel-2">
+        <div class="s-section">
+          <div class="s-section__head">
+            <div class="s-section__icon"><i class="fa-solid fa-router"></i></div>
+            <div class="s-section__title">{{ _('Premier routeur') }}</div>
           </div>
-          <div class="form-group">
-            <label class="form-label">{{ _('Adresse IP') }}</label>
-            <input class="form-input" type="text" name="r_ip"
-                   placeholder="192.168.1.1" required
-                   value="{{ request.form.get('r_ip','') }}">
+
+          <div class="s-row">
+            <div class="s-field">
+              <label class="s-label">{{ _('Nom') }}</label>
+              <input class="s-input" type="text" name="r_name"
+                     placeholder="Huawei AR651W" required
+                     value="{{ request.form.get('r_name','') }}">
+            </div>
+            <div class="s-field">
+              <label class="s-label">{{ _('Adresse IP') }}</label>
+              <input class="s-input" type="text" name="r_ip"
+                     placeholder="192.168.1.1" required
+                     value="{{ request.form.get('r_ip','') }}">
+            </div>
           </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">{{ _('Version SNMP') }}</label>
-            <select class="form-input" name="r_version" id="setup-version"
-                    onchange="setupVersionToggle()">
-              <option value="3" {% if request.form.get('r_version','3')=='3' %}selected{% endif %}>{{ _('SNMPv3 (recommandé)') }}</option>
-              <option value="2" {% if request.form.get('r_version')=='2' %}selected{% endif %}>{{ _('SNMPv2c (legacy)') }}</option>
-            </select>
+          <div class="s-row">
+            <div class="s-field">
+              <label class="s-label">{{ _('Version SNMP') }}</label>
+              <select class="s-input" name="r_version" id="setup-version"
+                      onchange="setupVersionToggle()">
+                <option value="3" {% if request.form.get('r_version','3')=='3' %}selected{% endif %}>{{ _('SNMPv3 (recommandé)') }}</option>
+                <option value="2" {% if request.form.get('r_version')=='2' %}selected{% endif %}>{{ _('SNMPv2c') }}</option>
+              </select>
+            </div>
+            <div class="s-field">
+              <label class="s-label">{{ _('Port SNMP') }}</label>
+              <input class="s-input" type="number" name="r_port"
+                     min="1" max="65535"
+                     value="{{ request.form.get('r_port','161') }}">
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">{{ _('Port SNMP') }}</label>
-            <input class="form-input" type="number" name="r_port"
-                   min="1" max="65535"
-                   value="{{ request.form.get('r_port','161') }}">
+
+          <!-- SNMPv2c -->
+          <div id="setup-v2">
+            <div class="s-row s-row--full">
+              <div class="s-field">
+                <label class="s-label">{{ _('Community SNMP') }}</label>
+                <input class="s-input" type="text" name="r_community"
+                       placeholder="public"
+                       value="{{ request.form.get('r_community','public') }}">
+              </div>
+            </div>
+          </div>
+
+          <!-- SNMPv3 -->
+          <div id="setup-v3" style="display:none">
+            <div class="s-row s-row--full">
+              <div class="s-field">
+                <label class="s-label">
+                  {{ _('Utilisateur SNMPv3') }}
+                  <span class="req">*</span>
+                </label>
+                <input class="s-input" type="text" name="r_v3_username"
+                       placeholder="huwamonitor"
+                       value="{{ request.form.get('r_v3_username','') }}">
+              </div>
+            </div>
+            <div class="s-row">
+              <div class="s-field">
+                <label class="s-label">{{ _('Proto auth') }}</label>
+                <select class="s-input" name="r_v3_auth_protocol">
+                  <option value="SHA">SHA {{ _('(recommandé)') }}</option>
+                  <option value="MD5">MD5</option>
+                </select>
+              </div>
+              <div class="s-field">
+                <label class="s-label">{{ _('Mot de passe auth') }}</label>
+                <input class="s-input" type="password" name="r_v3_auth_password"
+                       placeholder="{{ _('min. 8 caractères') }}">
+              </div>
+            </div>
+            <div class="s-row">
+              <div class="s-field">
+                <label class="s-label">{{ _('Proto chiffrement') }}</label>
+                <select class="s-input" name="r_v3_priv_protocol">
+                  <option value="AES">AES128 {{ _('(recommandé)') }}</option>
+                  <option value="DES">DES</option>
+                </select>
+              </div>
+              <div class="s-field">
+                <label class="s-label">{{ _('Mot de passe chiffrement') }}</label>
+                <input class="s-input" type="password" name="r_v3_priv_password"
+                       placeholder="{{ _('min. 8 caractères') }}">
+              </div>
+            </div>
+          </div>
+
+          <div class="s-row">
+            <div class="s-field">
+              <label class="s-label">
+                {{ _('Intervalle collecte') }}
+                <span class="hint">(s)</span>
+              </label>
+              <input class="s-input" type="number" name="r_poll"
+                     min="10" max="3600"
+                     value="{{ request.form.get('r_poll','60') }}">
+            </div>
+            <div class="s-field">
+              <label class="s-label">
+                {{ _('Rétention') }}
+                <span class="hint">({{ _('jours') }})</span>
+              </label>
+              <input class="s-input" type="number" name="r_retention"
+                     min="1" max="365"
+                     value="{{ request.form.get('r_retention','30') }}">
+            </div>
           </div>
         </div>
 
-        <!-- v2c -->
-        <div id="setup-v2">
-          <div class="form-group">
-            <label class="form-label">{{ _('Community SNMP') }}</label>
-            <input class="form-input" type="text" name="r_community"
-                   placeholder="public"
-                   value="{{ request.form.get('r_community','public') }}">
-          </div>
+        <div class="step-actions">
+          <button type="button" class="btn-step-back" id="btn-2-back">
+            <i class="fa-solid fa-arrow-left"></i> {{ _('Retour') }}
+          </button>
+          <button type="button" class="btn-step-next" id="btn-2-next">
+            {{ _('Suivant') }} <i class="fa-solid fa-arrow-right"></i>
+          </button>
         </div>
-
-        <!-- v3 -->
-        <div id="setup-v3" style="display:none">
-          <div class="form-group">
-            <label class="form-label">{{ _('Utilisateur SNMPv3') }} <span class="txt-red">*</span></label>
-            <input class="form-input" type="text" name="r_v3_username"
-                   placeholder="huwamonitor"
-                   value="{{ request.form.get('r_v3_username','') }}">
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">{{ _('Proto auth') }}</label>
-              <select class="form-input" name="r_v3_auth_protocol">
-                <option value="SHA">{{ _('SHA (recommandé)') }}</option>
-                <option value="MD5">MD5</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">{{ _('Mot de passe auth') }}</label>
-              <input class="form-input" type="password" name="r_v3_auth_password"
-                     placeholder="{{ _('min. 8 caractères') }}">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">{{ _('Proto chiffrement') }}</label>
-              <select class="form-input" name="r_v3_priv_protocol">
-                <option value="AES">{{ _('AES128 (recommandé)') }}</option>
-                <option value="DES">DES</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">{{ _('Mot de passe chiffrement') }}</label>
-              <input class="form-input" type="password" name="r_v3_priv_password"
-                     placeholder="{{ _('min. 8 caractères') }}">
-            </div>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">{{ _('Intervalle collecte') }} <span class="txt-muted">(s)</span></label>
-            <input class="form-input" type="number" name="r_poll"
-                   min="10" max="3600"
-                   value="{{ request.form.get('r_poll','60') }}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">{{ _('Rétention') }} <span class="txt-muted">({{ _('30 jours') }})</span></label>
-            <input class="form-input" type="number" name="r_retention"
-                   min="1" max="365"
-                   value="{{ request.form.get('r_retention','30') }}">
-          </div>
+        <div style="text-align:center;margin-top:10px">
+          <button type="submit" class="btn-step-skip">
+            {{ _('Passer la config Syslog et démarrer') }} →
+          </button>
         </div>
       </div>
 
-      <button class="btn btn--primary btn--full" type="submit">
-        <i class="fa-solid fa-rocket"></i> {{ _('Démarrer HuwaControl') }}
-      </button>
+      <!-- ══════════════════════════════════════════════════════════
+           ÉTAPE 3 — Syslog (facultatif)
+      ══════════════════════════════════════════════════════════ -->
+      <div class="step-panel" id="panel-3">
+
+        <div class="syslog-info">
+          <p>{{ _('Une fois HuwaControl démarré, vous pouvez configurer votre routeur Huawei pour envoyer ses logs en temps réel. Cette étape est facultative — vous pourrez le faire plus tard depuis la page') }} <strong>{{ _('Logs') }}</strong>.</p>
+
+          <!-- Méthode 1 : CLI -->
+          <div>
+            <span class="method-badge method-badge--red">{{ _('MÉTHODE 1') }}</span>
+            <div class="method-title">{{ _('Via SSH / Console (CLI)') }}</div>
+            <p>{{ _('Connectez-vous en SSH au routeur, puis entrez les commandes suivantes en mode système :') }}</p>
+            <div class="code-block">
+              <span class="c"># {{ _('Activer le centre d\'information') }}</span><br>
+              <span class="cmd">info-center enable</span><br><br>
+              <span class="c"># {{ _('Déclarer le serveur syslog (remplacez l\'IP)') }}</span><br>
+              <span class="cmd">info-center loghost <span class="val">{{ request.host.split(':')[0] }}</span> facility local6</span><br><br>
+              <span class="c"># {{ _('Activer l\'envoi sur le canal syslog') }}</span><br>
+              <span class="cmd">info-center loghost source <span class="val">GigabitEthernet0/0/0</span></span><br><br>
+              <span class="c"># {{ _('Vérification') }}</span><br>
+              <span class="cmd">display info-center</span>
+            </div>
+            <div class="info-pill">
+              <i class="fa-solid fa-circle-info" style="margin-top:1px;flex-shrink:0"></i>
+              <span>{{ _('Port UDP standard :') }} <strong>514</strong> — {{ _('mappé automatiquement vers le récepteur interne. Si votre routeur propose un champ port, entrez') }} <strong>514</strong>.</span>
+            </div>
+          </div>
+
+          <hr class="method-divider">
+
+          <!-- Méthode 2 : eWeb -->
+          <div>
+            <span class="method-badge method-badge--blue">{{ _('MÉTHODE 2') }}</span>
+            <div class="method-title">{{ _('Via l\'interface Web eWeb (sans SSH)') }}</div>
+            <p>{{ _('Accédez à l\'interface web du routeur') }} (<code style="background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;font-size:.78rem">http://192.168.x.x</code>) {{ _('puis suivez les étapes :') }}</p>
+            <div class="syslog-steps">
+              <div class="syslog-step">
+                <div class="syslog-step__num">1</div>
+                <div>
+                  <div class="syslog-step__title">{{ _('Accès au menu principal') }}</div>
+                  <div class="syslog-step__desc">
+                    {{ _('Menu') }} <strong>Diagnostic</strong> → <strong>Info-center</strong><br>
+                    <em style="color:#444">{{ _('Ou selon le firmware : System → Log Management → Loghost') }}</em>
+                  </div>
+                </div>
+              </div>
+              <div class="syslog-step">
+                <div class="syslog-step__num">2</div>
+                <div>
+                  <div class="syslog-step__title">{{ _('Activer l\'info-center') }}</div>
+                  <div class="syslog-step__desc">
+                    {{ _('Cochez / activez') }} <strong>"Info-center Enable"</strong> {{ _('si ce n\'est pas déjà fait.') }}
+                  </div>
+                </div>
+              </div>
+              <div class="syslog-step">
+                <div class="syslog-step__num">3</div>
+                <div>
+                  <div class="syslog-step__title">{{ _('Ajouter un loghost') }}</div>
+                  <div class="syslog-step__desc">
+                    {{ _('Cliquez') }} <strong>{{ _('Ajouter') }}</strong> {{ _('et renseignez :') }}<br>
+                    <span style="display:inline-flex;align-items:center;gap:8px;margin-top:5px;
+                                 background:rgba(255,255,255,.04);border-radius:5px;padding:5px 10px">
+                      <span style="color:#555">Log host IP :</span>
+                      <code style="color:#f90">{{ request.host.split(':')[0] }}</code>
+                    </span>
+                    <div class="info-pill" style="margin-top:7px">
+                      <i class="fa-solid fa-circle-info" style="margin-top:1px;flex-shrink:0"></i>
+                      <span>{{ _('L\'AR651W n\'expose pas de champ "port" dans eWeb — il utilise toujours') }} <strong>UDP 514</strong>. {{ _('HuwaControl redirige automatiquement ce port.') }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="syslog-step">
+                <div class="syslog-step__num">4</div>
+                <div>
+                  <div class="syslog-step__title">{{ _('Sauvegarder') }}</div>
+                  <div class="syslog-step__desc">
+                    {{ _('Cliquez') }} <strong>{{ _('Appliquer / OK') }}</strong>. {{ _('Les logs apparaîtront dans la page Logs sous quelques secondes.') }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <button type="button" class="btn-step-back" id="btn-3-back">
+            <i class="fa-solid fa-arrow-left"></i> {{ _('Retour') }}
+          </button>
+          <button type="submit" class="btn-step-next">
+            <i class="fa-solid fa-rocket"></i> {{ _('Démarrer HuwaControl') }}
+          </button>
+        </div>
+
+      </div>
 
     </form>
+  </div>
+
+  <div class="setup-footer">
+    <span>HuwaControl</span>
+    <div style="display:flex;gap:10px;align-items:center">
+      <a href="{{ url_for('set_lang', lang='fr') }}"
+         style="color:{% if current_lang=='fr' %}#cc0000{% else %}#333{% endif %}">FR</a>
+      <span style="color:#222">|</span>
+      <a href="{{ url_for('set_lang', lang='en') }}"
+         style="color:{% if current_lang=='en' %}#cc0000{% else %}#333{% endif %}">EN</a>
+    </div>
   </div>
 </div>
 
 <script>
+// ── Stepper state ──────────────────────────────────────────────────
+let currentStep = {{ '1' if not error else ('2' if request.form.get('r_name') else '1') }};
+
+function goStep(n) {
+  // Masquer tous les panneaux
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('is-active'));
+  document.getElementById('panel-' + n).classList.add('is-active');
+
+  // Mettre à jour les cercles
+  [1,2,3].forEach(i => {
+    const item = document.getElementById('step-item-' + i);
+    item.classList.remove('is-active','is-done');
+    if (i < n)      item.classList.add('is-done');
+    else if (i === n) item.classList.add('is-active');
+  });
+
+  // Mettre à jour les lignes
+  if (n > 1) document.getElementById('line-1-2').classList.add('is-done');
+  else       document.getElementById('line-1-2').classList.remove('is-done');
+  if (n > 2) document.getElementById('line-2-3').classList.add('is-done');
+  else       document.getElementById('line-2-3').classList.remove('is-done');
+
+  currentStep = n;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Validation step 1 ─────────────────────────────────────────────
+document.getElementById('btn-1-next').addEventListener('click', () => {
+  const username = document.getElementById('f-username').value.trim();
+  const pwd      = document.getElementById('f-password').value;
+  const confirm  = document.getElementById('f-confirm').value;
+  if (!username) { document.getElementById('f-username').focus(); return; }
+  if (pwd.length < 8) {
+    alert('{{ _("Le mot de passe doit contenir au moins 8 caractères.") }}');
+    document.getElementById('f-password').focus(); return;
+  }
+  if (pwd !== confirm) {
+    alert('{{ _("Les mots de passe ne correspondent pas.") }}');
+    document.getElementById('f-confirm').focus(); return;
+  }
+  goStep(2);
+});
+
+document.getElementById('btn-2-back').addEventListener('click', () => goStep(1));
+document.getElementById('btn-2-next').addEventListener('click', () => goStep(3));
+document.getElementById('btn-3-back').addEventListener('click', () => goStep(2));
+
+// ── SNMP version toggle ───────────────────────────────────────────
 function setupVersionToggle() {
   const v = parseInt(document.getElementById('setup-version').value);
   document.getElementById('setup-v2').style.display = v === 2 ? '' : 'none';
   document.getElementById('setup-v3').style.display = v === 3 ? '' : 'none';
 }
-// Appliquer l'état initial (utile si le formulaire est re-soumis avec erreur)
 setupVersionToggle();
+
+// ── Si erreur serveur, restaurer l'étape correcte ─────────────────
+{% if error %}
+  {% if request.form.get('r_name') %}
+    goStep(2);
+  {% endif %}
+{% endif %}
+
+// Autofocus step 1
+document.getElementById('f-username').focus();
 </script>
 </body>
 </html>
