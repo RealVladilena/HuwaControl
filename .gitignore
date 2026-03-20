@@ -28,3 +28,4 @@ Thumbs.db
 
 # Outils de développement locaux — ne pas publier
 .claude/
+docker-compose.dev.yml
