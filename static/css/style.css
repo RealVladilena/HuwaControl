@@ -859,3 +859,85 @@ canvas { display: block; width: 100% !important; }
 .toast--info    i { color: var(--blue); }
 .toast--warning { border-color: var(--yellow); }
 .toast--warning i { color: var(--yellow); }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DASHBOARD MULTI-ROUTEURS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.dash-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 0.2s;
+}
+.dash-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.dash-card__name {
+  font-weight: 700;
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dash-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 6px;
+}
+.dash-metric {
+  display: flex;
+  flex-direction: column;
+}
+.dash-metric__label {
+  font-size: .72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.dash-metric__val {
+  font-size: .9rem;
+  font-weight: 600;
+}
+.dash-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.dash-card__footer {
+  display: flex;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* ─── Barre de synthèse dashboard ─────────────────────────────────────────── */
+.dash-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: .82rem;
+  font-weight: 600;
+}
+.dash-summary__item { padding: 3px 10px; border-radius: 20px; background: var(--surface-2); }
+.dash-summary__item--ok    { color: var(--clr-up, #57f287); }
+.dash-summary__item--warn  { color: #FEE75C; }
+.dash-summary__item--error { color: var(--clr-down, #ed4245); }
+.dash-summary__item--maint { color: var(--text-muted); }
+.dash-summary__refresh     { margin-left: auto; font-size: .75rem; font-weight: 400; }
