@@ -253,9 +253,9 @@
   <div class="login-footer">
     <span>HuwaControl v{{ APP_VERSION }}</span>
     <span style="margin:0 8px">·</span>
-    <a href="{{ url_for('set_lang', lang='fr') }}" style="color:{% if current_lang=='fr' %}#cc0000{% else %}#3a3a3a{% endif %};text-decoration:none;font-weight:600">FR</a>
+    <a href="{{ url_for('auth.set_lang', lang='fr') }}" style="color:{% if current_lang=='fr' %}#cc0000{% else %}#3a3a3a{% endif %};text-decoration:none;font-weight:600">FR</a>
     <span style="color:#3a3a3a;margin:0 3px">|</span>
-    <a href="{{ url_for('set_lang', lang='en') }}" style="color:{% if current_lang=='en' %}#cc0000{% else %}#3a3a3a{% endif %};text-decoration:none;font-weight:600">EN</a>
+    <a href="{{ url_for('auth.set_lang', lang='en') }}" style="color:{% if current_lang=='en' %}#cc0000{% else %}#3a3a3a{% endif %};text-decoration:none;font-weight:600">EN</a>
   </div>
 </div>
 

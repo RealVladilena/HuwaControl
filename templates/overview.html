@@ -143,7 +143,7 @@
       <i class="fa-solid fa-diagram-project"></i> {{ _('Interfaces actives') }}
       <span class="txt-muted" id="if-hidden-note" style="font-size:.78rem;margin-left:6px"></span>
     </span>
-    <a href="{{ url_for('interfaces') }}" class="card__link">{{ _('Détail') }} <i class="fa-solid fa-arrow-right"></i></a>
+    <a href="{{ url_for('main.interfaces') }}" class="card__link">{{ _('Détail') }} <i class="fa-solid fa-arrow-right"></i></a>
   </div>
   <div class="card__body card__body--no-pad">
     <table class="table">
@@ -163,7 +163,7 @@
     <span><i class="fa-solid fa-shield-halved"></i> {{ _('Tunnels VPN') }}</span>
     <div style="display:flex;align-items:center;gap:8px">
       <span class="card__badge" id="vpn-count">—</span>
-      <a href="{{ url_for('vpn_page') }}" class="card__link">{{ _('Détail') }} <i class="fa-solid fa-arrow-right"></i></a>
+      <a href="{{ url_for('main.vpn_page') }}" class="card__link">{{ _('Détail') }} <i class="fa-solid fa-arrow-right"></i></a>
     </div>
   </div>
   <div id="vpn-body">

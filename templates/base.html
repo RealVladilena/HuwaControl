@@ -62,15 +62,15 @@
 
         <!-- Language switcher -->
         <div class="topbar__lang">
-          <a href="{{ url_for('set_lang', lang='fr') }}" class="lang-btn{% if current_lang=='fr' %} lang-btn--active{% endif %}">FR</a>
+          <a href="{{ url_for('auth.set_lang', lang='fr') }}" class="lang-btn{% if current_lang=='fr' %} lang-btn--active{% endif %}">FR</a>
           <span class="lang-sep">|</span>
-          <a href="{{ url_for('set_lang', lang='en') }}" class="lang-btn{% if current_lang=='en' %} lang-btn--active{% endif %}">EN</a>
+          <a href="{{ url_for('auth.set_lang', lang='en') }}" class="lang-btn{% if current_lang=='en' %} lang-btn--active{% endif %}">EN</a>
         </div>
 
         <div class="topbar__user">
           <i class="fa-solid fa-user-circle"></i>
           <span>{{ current_user.username }}</span>
-          <a href="{{ url_for('logout') }}" class="topbar__logout" title="{{ _('Déconnexion') }}">
+          <a href="{{ url_for('auth.logout') }}" class="topbar__logout" title="{{ _('Déconnexion') }}">
             <i class="fa-solid fa-right-from-bracket"></i>
           </a>
         </div>
@@ -88,103 +88,103 @@
 
         <li class="nav__section-label">{{ _('MONITORING') }}</li>
         <li class="nav__item {% if active_page=='overview' %}nav__item--active{% endif %}">
-          <a href="{{ url_for('overview') }}">
+          <a href="{{ url_for('main.overview') }}">
             <i class="fa-solid fa-gauge-high"></i><span>{{ _('Aperçu') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='interfaces' %}nav__item--active{% endif %}">
-          <a href="{{ url_for('interfaces') }}">
+          <a href="{{ url_for('main.interfaces') }}">
             <i class="fa-solid fa-diagram-project"></i><span>{{ _('Interfaces') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='wifi' %}nav__item--active{% endif %}">
-          <a href="{{ url_for('wifi_page') }}">
+          <a href="{{ url_for('main.wifi_page') }}">
             <i class="fa-solid fa-wifi"></i><span>{{ _('WiFi') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='clients' %}nav__item--active{% endif %}">
-          <a href="{{ url_for('clients_page') }}">
+          <a href="{{ url_for('main.clients_page') }}">
             <i class="fa-solid fa-users"></i><span>{{ _('Clients') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='performance' %}nav__item--active{% endif %}">
-          <a href="{{ url_for('performance') }}">
+          <a href="{{ url_for('main.performance') }}">
             <i class="fa-solid fa-chart-area"></i><span>{{ _('Performance') }}</span>
           </a>
         </li>
 
         <li class="nav__item {% if active_page=='events' %}nav__item--active{% endif %}">
-          <a href="{{ url_for('events_page') }}">
+          <a href="{{ url_for('main.events_page') }}">
             <i class="fa-solid fa-bell"></i><span>{{ _('Événements') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='ping' %}nav__item--active{% endif %}">
-          <a href="{{ url_for('ping_page') }}">
+          <a href="{{ url_for('main.ping_page') }}">
             <i class="fa-solid fa-satellite-dish"></i><span>{{ _('Ping / Latence') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='routing' %}nav__item--active{% endif %}">
-          <a href="{{ url_for('routing_table_page') }}">
+          <a href="{{ url_for('main.routing_table_page') }}">
             <i class="fa-solid fa-route"></i><span>{{ _('Table de routage') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='vpn' %}nav__item--active{% endif %}">
-          <a href="{{ url_for('vpn_page') }}">
+          <a href="{{ url_for('main.vpn_page') }}">
             <i class="fa-solid fa-shield-halved"></i><span>{{ _('VPN / Tunnels') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='logs' %}nav__item--active{% endif %}">
-          <a href="{{ url_for('logs_page') }}">
+          <a href="{{ url_for('main.logs_page') }}">
             <i class="fa-solid fa-terminal"></i><span>{{ _('Logs routeur') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='bgp_ospf' %}nav__item--active{% endif %}">
-          <a href="{{ url_for('bgp_ospf_page') }}">
+          <a href="{{ url_for('main.bgp_ospf_page') }}">
             <i class="fa-solid fa-circle-nodes"></i><span>{{ _('BGP / OSPF') }}</span>
           </a>
         </li>
 
         <li class="nav__section-label">{{ _('HISTORIQUE') }}</li>
         <li class="nav__item {% if active_page=='history' %}nav__item--active{% endif %}">
-          <a href="{{ url_for('history') }}">
+          <a href="{{ url_for('main.history') }}">
             <i class="fa-solid fa-clock-rotate-left"></i><span>{{ _('30 jours') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='report' %}nav__item--active{% endif %}">
-          <a href="{{ url_for('report_page') }}">
+          <a href="{{ url_for('main.report_page') }}">
             <i class="fa-solid fa-file-lines"></i><span>{{ _('Rapport') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='compare' %}nav__item--active{% endif %}">
-          <a href="{{ url_for('compare_page') }}">
+          <a href="{{ url_for('main.compare_page') }}">
             <i class="fa-solid fa-code-compare"></i><span>{{ _('Comparaison') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='dashboard' %}nav__item--active{% endif %}">
-          <a href="{{ url_for('dashboard') }}">
+          <a href="{{ url_for('main.dashboard') }}">
             <i class="fa-solid fa-table-cells-large"></i><span>{{ _('Vue globale') }}</span>
           </a>
         </li>
 
         <li class="nav__section-label">{{ _('ADMINISTRATION') }}</li>
         <li class="nav__item {% if active_page=='routers' %}nav__item--active{% endif %}">
-          <a href="{{ url_for('routers_page') }}">
+          <a href="{{ url_for('main.routers_page') }}">
             <i class="fa-solid fa-server"></i><span>{{ _('Routeurs') }}</span>
           </a>
         </li>
         {% if current_user.is_admin %}
         <li class="nav__item {% if active_page=='notifications' %}nav__item--active{% endif %}">
-          <a href="{{ url_for('notifications_page') }}">
+          <a href="{{ url_for('main.notifications_page') }}">
             <i class="fa-solid fa-bell-concierge"></i><span>{{ _('Notifications') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='audit' %}nav__item--active{% endif %}">
-          <a href="{{ url_for('audit_page') }}">
+          <a href="{{ url_for('main.audit_page') }}">
             <i class="fa-solid fa-scroll"></i><span>{{ _('Audit') }}</span>
           </a>
         </li>
         <li class="nav__item {% if active_page=='settings' %}nav__item--active{% endif %}">
-          <a href="{{ url_for('settings') }}">
+          <a href="{{ url_for('main.settings') }}">
             <i class="fa-solid fa-gear"></i><span>{{ _('Paramètres') }}</span>
           </a>
         </li>
