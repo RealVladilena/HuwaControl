@@ -149,14 +149,9 @@
 
         <div class="rr-vdiv"></div>
 
-        <!-- MGMT/GE0 -->
-        <div class="rr-port" id="rr-GE0">
-          <div class="rr-port-led rp-led rp-led--unknown"></div>
-          <div class="rr-rj45"></div>
-          <span class="rr-label">MGMT/<br>GE0</span>
-        </div>
-
-        <!-- GE1–GE7 : rangée haute = impairs (GE1,GE3,GE5,GE7) / basse = pairs (GE2,GE4,GE6) -->
+        <!-- Bloc GE0–GE7 : 4 colonnes × 2 rangées
+             Rangée haute  : GE1  GE3  GE5  GE7
+             Rangée basse  : GE0  GE2  GE4  GE6  (MGMT/GE0 en col 1) -->
         <div class="rr-stack-group">
           <div class="rr-stack-row">
             {% for n in [1,3,5,7] %}
@@ -168,6 +163,12 @@
             {% endfor %}
           </div>
           <div class="rr-stack-row">
+            <!-- MGMT/GE0 en première position (col 1, sous GE1) -->
+            <div class="rr-port" id="rr-GE0">
+              <div class="rr-port-led rp-led rp-led--unknown"></div>
+              <div class="rr-rj45"></div>
+              <span class="rr-label">MGMT/<br>GE0</span>
+            </div>
             {% for n in [2,4,6] %}
             <div class="rr-port" id="rr-GE{{ n }}">
               <div class="rr-port-led rp-led rp-led--unknown"></div>
@@ -175,12 +176,6 @@
               <span class="rr-label">GE{{ n }}</span>
             </div>
             {% endfor %}
-            <!-- case vide pour aligner sur GE7 -->
-            <div class="rr-port rr-port--phantom">
-              <div class="rr-port-led"></div>
-              <div class="rr-rj45"></div>
-              <span class="rr-label">--</span>
-            </div>
           </div>
         </div>
 
@@ -605,7 +600,7 @@ let currentHours = 1;
 // ── Panel routeur ─────────────────────────────────────────────────────────────
 // Mapping : label LED → fragments de noms d'interface à matcher (insensible à la casse)
 const LED_MAP = {
-  'INET': ['wan', 'dialer', 'vlanif100', 'pppoe'],   // GE8/GE9 gérés séparément
+  'INET': ['wan', 'dialer', 'pppoe'],   // GE8/GE9 gérés séparément ; vlanif exclus (trop générique)
   'WWAN': ['cellular', 'lte', 'wwan', '4g', 'lte0'],
   'GE0':  ['ge0/0/0', 'gigabitethernet0/0/0'],
   'GE1':  ['ge0/0/1', 'gigabitethernet0/0/1'],
@@ -708,13 +703,18 @@ function updatePanel(ifaces) {
     if (label === 'WWAN' && status === 1) wwanUp = true;
   });
 
-  // INET : dérivé de GE8/GE9/WWAN si aucune iface WAN explicite (dialer/pppoe) n'a matché
-  if (!best['INET']) {
-    const wanCandidates = ['GE8', 'GE9', 'WWAN'].map(k => best[k]).filter(Boolean);
-    const wanUp  = wanCandidates.some(b => (_prio[b.state] ?? 0) >= 3);
-    const wanAct = wanCandidates.some(b => b.state === 'activity');
-    if (wanUp)              best['INET'] = { state: wanAct ? 'activity' : 'green', tip: 'WAN up' };
-    else if (wanCandidates.length) best['INET'] = { state: 'off', tip: 'WAN down' };
+  // INET : meilleur état parmi GE8, GE9, WWAN + tout iface WAN nommée (dialer/pppoe)
+  // GE8/GE9 UP prend toujours le dessus sur un dialer/vlanif DOWN
+  {
+    const wanBests = ['GE8', 'GE9', 'WWAN'].map(k => best[k]).filter(Boolean);
+    if (best['INET']) wanBests.push(best['INET']);
+    if (wanBests.length) {
+      const wanUp  = wanBests.some(b => (_prio[b.state] ?? 0) >= 3);
+      const wanAct = wanBests.some(b => b.state === 'activity');
+      best['INET'] = wanUp
+        ? { state: wanAct ? 'activity' : 'green', tip: 'WAN up (GE8/GE9)' }
+        : { state: 'off', tip: 'WAN down' };
+    }
   }
 
   Object.entries(best).forEach(([lbl, { state, tip }]) => setLed(lbl, state, tip));
