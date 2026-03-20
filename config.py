@@ -37,9 +37,10 @@ OID_IF_IN_PKT = "1.3.6.1.2.1.31.1.1.1.7"   # ifHCInUcastPkts  (64-bit)
 OID_IF_OUT_PKT= "1.3.6.1.2.1.31.1.1.1.11"  # ifHCOutUcastPkts (64-bit)
 
 # ─── OIDs Huawei spécifiques ─────────────────────────────────────────────────
-OID_HW_CPU  = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.5"
-OID_HW_MEM  = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.7"
-OID_HW_TEMP = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.11"
+OID_HW_CPU         = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.5"
+OID_HW_MEM         = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.7"
+OID_HW_TEMP        = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.11"
+OID_HW_FAULT_STATUS= "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.3"  # hwEntityFaultStatus (1=normal,2=warning,3=minor,4=major,5=critical)
 
 # ─── Table ARP (clients connectés) ───────────────────────────────────────────
 OID_ARP_MAC  = "1.3.6.1.2.1.4.22.1.2"   # ipNetToMediaPhysAddress

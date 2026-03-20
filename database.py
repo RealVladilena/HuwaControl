@@ -97,9 +97,10 @@ def init_db() -> None:
                 sys_descr   TEXT,
                 sys_uptime  BIGINT,
                 location    TEXT,
-                cpu_usage   DOUBLE PRECISION,
-                mem_usage   DOUBLE PRECISION,
-                temperature DOUBLE PRECISION
+                cpu_usage    DOUBLE PRECISION,
+                mem_usage    DOUBLE PRECISION,
+                temperature  DOUBLE PRECISION,
+                fault_status INTEGER
             );
 
             CREATE TABLE IF NOT EXISTS interface_stats (
@@ -302,10 +303,11 @@ def init_db() -> None:
 
         # Migration : colonnes packets + pps
         for tbl, col, defn in [
-            ("interface_stats", "in_ucast_pkts",  "BIGINT"),
-            ("interface_stats", "out_ucast_pkts", "BIGINT"),
-            ("interface_bps",   "in_pps",         "DOUBLE PRECISION"),
-            ("interface_bps",   "out_pps",        "DOUBLE PRECISION"),
+            ("interface_stats", "in_ucast_pkts",   "BIGINT"),
+            ("interface_stats", "out_ucast_pkts",  "BIGINT"),
+            ("interface_bps",   "in_pps",          "DOUBLE PRECISION"),
+            ("interface_bps",   "out_pps",         "DOUBLE PRECISION"),
+            ("system_metrics",  "fault_status",    "INTEGER"),
         ]:
             cur = _cur(conn)
             cur.execute(
@@ -613,12 +615,12 @@ def insert_system(router_id: int, data: dict) -> None:
         _cur(conn).execute(
             "INSERT INTO system_metrics "
             "(router_id, ts, sys_name, sys_descr, sys_uptime, location, "
-            " cpu_usage, mem_usage, temperature) "
-            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+            " cpu_usage, mem_usage, temperature, fault_status) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
             (router_id, int(time.time()),
              data.get("sys_name"), data.get("sys_descr"), data.get("sys_uptime"),
              data.get("location"), data.get("cpu_usage"),
-             data.get("mem_usage"), data.get("temperature"))
+             data.get("mem_usage"), data.get("temperature"), data.get("fault_status"))
         )
 
 

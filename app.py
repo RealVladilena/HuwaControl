@@ -767,10 +767,13 @@ def api_lte():
     if not rid:
         return jsonify(None)
     hours = request.args.get("hours", 1, type=int)
-    latest  = db.get_lte_latest(rid)
-    history = db.get_lte_history(rid, hours=hours)
-    radios  = db.get_wifi_radio_latest(rid)
-    return jsonify({"latest": latest, "history": history, "wifi_radios": radios})
+    latest      = db.get_lte_latest(rid)
+    history     = db.get_lte_history(rid, hours=hours)
+    radios      = db.get_wifi_radio_latest(rid)
+    sys_latest   = db.get_latest_system(rid)
+    fault_status = sys_latest.get("fault_status") if sys_latest else None
+    return jsonify({"latest": latest, "history": history, "wifi_radios": radios,
+                    "fault_status": fault_status})
 
 
 @app.route("/api/interfaces/<int:if_index>/bps")

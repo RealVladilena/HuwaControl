@@ -148,9 +148,10 @@ def collect_system(router: dict) -> dict:
         non_zero = [v for v in vals if v > 0]
         return max(non_zero) if non_zero else (vals[0] if vals else None)
 
-    data["cpu_usage"]   = _best(snmp_walk(router, config.OID_HW_CPU))
-    data["mem_usage"]   = _best(snmp_walk(router, config.OID_HW_MEM))
-    data["temperature"] = _best(snmp_walk(router, config.OID_HW_TEMP))
+    data["cpu_usage"]    = _best(snmp_walk(router, config.OID_HW_CPU))
+    data["mem_usage"]    = _best(snmp_walk(router, config.OID_HW_MEM))
+    data["temperature"]  = _best(snmp_walk(router, config.OID_HW_TEMP))
+    data["fault_status"] = _int(_best(snmp_walk(router, config.OID_HW_FAULT_STATUS)))
     return data
 
 

@@ -146,6 +146,7 @@
 .rp-led--green   { background: #00cc55; box-shadow: 0 0 6px rgba(0,204,85,0.7); }
 .rp-led--activity{ background: #00cc55; box-shadow: 0 0 8px rgba(0,204,85,0.9); animation: blink .5s ease-in-out infinite; }
 .rp-led--off     { background: #2a2a2a; box-shadow: none; border: 1px solid #333; }
+.rp-led--warn    { background: #ff9900; box-shadow: 0 0 6px rgba(255,153,0,0.7); }
 .rp-led--error   { background: #cc0000; box-shadow: 0 0 6px rgba(204,0,0,0.7); }
 .rp-led--unknown { background: #444; box-shadow: none; }
 @keyframes blink {
@@ -341,7 +342,7 @@ let currentHours = 1;
 // ── Panel routeur ─────────────────────────────────────────────────────────────
 // Mapping : label LED → fragments de noms d'interface à matcher (insensible à la casse)
 const LED_MAP = {
-  'INET': ['wan', 'dialer', 'vlanif100', 'pppoe', 'ge0/0/8', 'ge0/0/9', 'ge8', 'ge9'],
+  'INET': ['wan', 'dialer', 'vlanif100', 'pppoe', 'gigabitethernet0/0/8', 'gigabitethernet0/0/9', 'ge0/0/8', 'ge0/0/9'],
   'WWAN': ['cellular', 'lte', 'wwan', '4g', 'lte0'],
   'GE0':  ['ge0/0/0', 'gigabitethernet0/0/0'],
   'GE1':  ['ge0/0/1', 'gigabitethernet0/0/1'],
@@ -355,7 +356,7 @@ const LED_MAP = {
   'GE9':  ['ge0/0/9', 'gigabitethernet0/0/9'],
   '24G':  ['wlan-radio0/0/0', 'radio0', 'wlan0', 'wifi0', '2.4g', 'wlan-bss0'],
   '5G':   ['wlan-radio0/0/1', 'radio1', 'wlan1', 'wifi1', '5g',   'wlan-bss1'],
-  'CTRL': ['loopback', 'nve', 'tunnel'],
+  'CTRL': ['meth0/0/0', 'meth0', 'management'],
 };
 
 function matchLed(ifName) {
@@ -388,22 +389,23 @@ function setRssi(level) {
 }
 
 function updatePanel(ifaces) {
-  // Réinitialiser tous les LEDs mappables
+  // Réinitialiser tous les LEDs mappables (SYS non inclus — mis à jour par loadLtePanel)
   Object.keys(LED_MAP).forEach(id => setLed(id, 'off', ''));
-
-  // LEDs toujours verts (page accessible = routeur allumé)
   setLed('PWR', 'green', 'Power ON');
-  setLed('SYS', 'green', 'System OK');
 
-  let wwanUp = false;
+  // Priorités : on garde le meilleur état si plusieurs interfaces matchent le même LED
+  // (ex: INET peut avoir GE0/0/8 UP + GE0/0/9 DOWN → on garde UP)
+  const _prio = { activity: 4, green: 3, warn: 2, error: 2, off: 1, unknown: 0 };
+  const best  = {};
+  let wwanUp  = false;
 
   ifaces.forEach(iface => {
-    const name    = iface.if_name || '';
-    const status  = iface.if_status; // 1=up, 2=down
-    const inBps   = iface.in_bps  || 0;
-    const outBps  = iface.out_bps || 0;
+    const name  = iface.if_name || '';
+    const status = iface.if_status;
+    const inBps  = iface.in_bps  || 0;
+    const outBps = iface.out_bps || 0;
     const hasTraffic = (inBps + outBps) > 1000;
-    const label   = matchLed(name);
+    const label = matchLed(name);
     if (!label) return;
 
     let state, tip;
@@ -418,15 +420,17 @@ function updatePanel(ifaces) {
       state = 'error';
       tip   = name + ' — ERROR';
     }
-    setLed(label, state, tip);
 
+    if (!best[label] || (_prio[state] ?? 0) > (_prio[best[label].state] ?? 0)) {
+      best[label] = { state, tip };
+    }
     if (label === 'WWAN' && status === 1) wwanUp = true;
   });
 
-  // RSSI : si WWAN actif on met un niveau fixe (SNMP ne retourne pas le RSSI directement ici)
+  Object.entries(best).forEach(([lbl, { state, tip }]) => setLed(lbl, state, tip));
+
   if (wwanUp) setRssi(3); else setRssi(0);
 
-  // Timestamp
   const now = new Date();
   const ts  = now.toLocaleTimeString('fr-FR');
   const el  = document.getElementById('panel-updated');
@@ -447,6 +451,18 @@ function loadLtePanel() {
       if (!data) return;
       const lte    = data.latest;
       const radios = data.wifi_radios || [];
+
+      // ── Statut système (hwEntityFaultStatus) ─────────────────────
+      const fs = data.fault_status;
+      if (fs === null || fs === undefined) {
+        setLed('SYS', 'unknown', 'Statut inconnu');
+      } else if (fs <= 1) {
+        setLed('SYS', 'green', 'Système OK');
+      } else if (fs === 2) {
+        setLed('SYS', 'warn', 'Avertissement système');
+      } else {
+        setLed('SYS', 'error', `Alarme système (niveau ${fs})`);
+      }
 
       // ── RSSI réel ────────────────────────────────────────────────
       if (lte && lte.rssi !== null && lte.rssi !== undefined) {
