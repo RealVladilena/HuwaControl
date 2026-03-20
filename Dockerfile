@@ -27,12 +27,10 @@ COPY . .
 
 # Utilisateur non-root
 RUN useradd -m appuser \
+    && mkdir -p /app/instance \
     && chown -R appuser /app \
     && chmod +x /app/entrypoint.sh
 USER appuser
-
-# Volume pour les secrets persistés et données d'instance
-VOLUME ["/app/instance"]
 
 EXPOSE 5000
 
