@@ -41,7 +41,7 @@
     /* ── Carte ───────────────────────────────────────────────────── */
     .setup-card {
       position: relative; z-index: 1;
-      width: 100%; max-width: 580px;
+      width: 100%; max-width: 680px;
       background: rgba(10,10,10,0.58);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
@@ -271,33 +271,37 @@
       border-radius: 7px; padding: 8px 12px;
       font-size: .78rem; color: #5a9bf5; margin-top: 8px; line-height: 1.5;
     }
-    /* ── Onglets méthodes ────────────────────────────────────────── */
-    .method-tabs {
-      display: flex; gap: 6px; margin-bottom: 14px;
+    /* ── 2 colonnes méthodes ─────────────────────────────────────── */
+    .methods-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
     }
-    .method-tab {
-      flex: 1; padding: 8px 10px;
+    .method-col {
       background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 7px; cursor: pointer;
-      font-size: .75rem; font-weight: 700;
-      color: #444; text-align: center;
-      transition: all .2s; letter-spacing: .3px;
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 9px;
+      padding: 14px;
+      display: flex; flex-direction: column; gap: 10px;
     }
-    .method-tab.is-active {
-      background: rgba(204,0,0,0.14);
-      border-color: rgba(204,0,0,0.35);
-      color: #cc0000;
+    .method-col__head {
+      display: flex; align-items: center; gap: 8px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
     }
-    .method-tab:not(.is-active):hover {
-      border-color: rgba(255,255,255,0.16); color: #777;
+    .method-col__badge {
+      font-size: .65rem; font-weight: 700;
+      padding: 2px 8px; border-radius: 20px;
+      flex-shrink: 0;
     }
-    .method-pane { display: none; }
-    .method-pane.is-active { display: block; }
-
-    .method-divider {
-      border: none; border-top: 1px solid rgba(255,255,255,0.06);
-      margin: 14px 0;
+    .method-col__badge--red  { background: #cc0000; color: #fff; }
+    .method-col__badge--blue { background: #1a6fa8; color: #fff; }
+    .method-col__title {
+      font-size: .78rem; font-weight: 700; color: #bbb;
+    }
+    @media (max-width: 540px) {
+      .methods-grid { grid-template-columns: 1fr; }
     }
 
     /* ── Footer ──────────────────────────────────────────────────── */
@@ -544,92 +548,88 @@
             <div class="s-section__title">{{ _('Configuration Syslog') }}</div>
           </div>
 
-          <p style="font-size:.82rem;color:#666;margin-bottom:14px;line-height:1.6">
-            {{ _('Configurez votre routeur Huawei pour envoyer ses logs en temps réel vers HuwaControl. Vous pouvez aussi le faire plus tard depuis la page') }} <strong style="color:#888">{{ _('Logs') }}</strong>.
+          <p style="font-size:.81rem;color:#666;margin-bottom:14px;line-height:1.6">
+            {{ _('Configurez votre routeur Huawei pour envoyer ses logs en temps réel. Vous pourrez aussi le faire plus tard depuis la page') }} <strong style="color:#888">{{ _('Logs') }}</strong>.
           </p>
 
-          <!-- Onglets -->
-          <div class="method-tabs">
-            <button type="button" class="method-tab is-active" onclick="switchMethod(1)">
-              <i class="fa-solid fa-terminal" style="margin-right:5px"></i>{{ _('SSH / CLI') }}
-            </button>
-            <button type="button" class="method-tab" onclick="switchMethod(2)">
-              <i class="fa-solid fa-globe" style="margin-right:5px"></i>{{ _('Interface Web') }}
-            </button>
-          </div>
+          <div class="methods-grid">
 
-          <!-- Méthode 1 : CLI -->
-          <div class="method-pane is-active" id="method-pane-1">
-            <p style="font-size:.8rem;color:#666;margin-bottom:10px">
-              {{ _('Connectez-vous en SSH, puis entrez ces commandes en mode système :') }}
-            </p>
-            <div class="code-block">
-              <span class="c"># {{ _('Activer le centre d\'information') }}</span><br>
-              <span class="cmd">info-center enable</span><br><br>
-              <span class="c"># {{ _('Déclarer le serveur syslog') }}</span><br>
-              <span class="cmd">info-center loghost <span class="val">{{ request.host.split(':')[0] }}</span> facility local6</span><br><br>
-              <span class="c"># {{ _('Activer l\'envoi') }}</span><br>
-              <span class="cmd">info-center loghost source <span class="val">GigabitEthernet0/0/0</span></span><br><br>
-              <span class="c"># {{ _('Vérification') }}</span><br>
-              <span class="cmd">display info-center</span>
+            <!-- ── Colonne gauche : CLI ───────────────────── -->
+            <div class="method-col">
+              <div class="method-col__head">
+                <span class="method-col__badge method-col__badge--red">SSH</span>
+                <span class="method-col__title">{{ _('Via CLI') }}</span>
+              </div>
+              <p style="font-size:.78rem;color:#666;line-height:1.5;margin:0">
+                {{ _('Connectez-vous en SSH, puis entrez ces commandes :') }}
+              </p>
+              <div class="code-block" style="margin-bottom:0">
+                <span class="c"># {{ _('Activer') }}</span><br>
+                <span class="cmd">info-center enable</span><br><br>
+                <span class="c"># {{ _('Serveur syslog') }}</span><br>
+                <span class="cmd">info-center loghost <span class="val">{{ request.host.split(':')[0] }}</span> facility local6</span><br><br>
+                <span class="c"># {{ _('Source') }}</span><br>
+                <span class="cmd">info-center loghost source <span class="val">GigabitEthernet0/0/0</span></span><br><br>
+                <span class="c"># {{ _('Vérif.') }}</span><br>
+                <span class="cmd">display info-center</span>
+              </div>
+              <div class="info-pill" style="margin-top:0">
+                <i class="fa-solid fa-circle-info" style="flex-shrink:0;margin-top:1px"></i>
+                <span>{{ _('Port') }} <strong>UDP 514</strong> — {{ _('mappé automatiquement.') }}</span>
+              </div>
             </div>
-            <div class="info-pill">
-              <i class="fa-solid fa-circle-info" style="flex-shrink:0;margin-top:1px"></i>
-              <span>{{ _('Port UDP') }} <strong>514</strong> — {{ _('mappé automatiquement. Si un champ port est disponible, entrez') }} <strong>514</strong>.</span>
-            </div>
-          </div>
 
-          <!-- Méthode 2 : eWeb -->
-          <div class="method-pane" id="method-pane-2">
-            <p style="font-size:.8rem;color:#666;margin-bottom:12px">
-              {{ _('Accédez à l\'interface web du routeur') }} (<code style="background:rgba(255,255,255,.07);padding:1px 5px;border-radius:3px">http://192.168.x.x</code>)
-            </p>
-            <div class="syslog-steps">
-              <div class="syslog-step">
-                <div class="syslog-step__num">1</div>
-                <div>
-                  <div class="syslog-step__title">{{ _('Accès au menu') }}</div>
-                  <div class="syslog-step__desc">
-                    <strong>Diagnostic</strong> → <strong>Info-center</strong>
-                    <br><em style="color:#3d3d3d">{{ _('Ou : System → Log Management → Loghost') }}</em>
-                  </div>
-                </div>
+            <!-- ── Colonne droite : eWeb ──────────────────── -->
+            <div class="method-col">
+              <div class="method-col__head">
+                <span class="method-col__badge method-col__badge--blue">WEB</span>
+                <span class="method-col__title">{{ _('Via interface eWeb') }}</span>
               </div>
-              <div class="syslog-step">
-                <div class="syslog-step__num">2</div>
-                <div>
-                  <div class="syslog-step__title">{{ _('Activer l\'info-center') }}</div>
-                  <div class="syslog-step__desc">
-                    {{ _('Cochez') }} <strong>"Info-center Enable"</strong>
-                  </div>
-                </div>
-              </div>
-              <div class="syslog-step">
-                <div class="syslog-step__num">3</div>
-                <div>
-                  <div class="syslog-step__title">{{ _('Ajouter un loghost') }}</div>
-                  <div class="syslog-step__desc">
-                    {{ _('Cliquez') }} <strong>{{ _('Ajouter') }}</strong> —
-                    Log host IP : <code style="color:#f90">{{ request.host.split(':')[0] }}</code>
-                    <div class="info-pill" style="margin-top:7px">
-                      <i class="fa-solid fa-circle-info" style="flex-shrink:0;margin-top:1px"></i>
-                      <span>{{ _('L\'AR651W utilise toujours') }} <strong>UDP 514</strong> {{ _('(pas de champ port dans eWeb).') }}</span>
+              <p style="font-size:.78rem;color:#666;line-height:1.5;margin:0">
+                {{ _('Accédez à') }} <code style="background:rgba(255,255,255,.07);padding:1px 4px;border-radius:3px;font-size:.74rem">http://192.168.x.x</code>
+              </p>
+              <div class="syslog-steps">
+                <div class="syslog-step">
+                  <div class="syslog-step__num">1</div>
+                  <div>
+                    <div class="syslog-step__title">{{ _('Menu') }}</div>
+                    <div class="syslog-step__desc">
+                      <strong>Diagnostic</strong> → <strong>Info-center</strong>
+                      <br><em style="color:#3d3d3d;font-size:.74rem">{{ _('Ou : System → Log Management') }}</em>
                     </div>
                   </div>
                 </div>
-              </div>
-              <div class="syslog-step">
-                <div class="syslog-step__num">4</div>
-                <div>
-                  <div class="syslog-step__title">{{ _('Sauvegarder') }}</div>
-                  <div class="syslog-step__desc">
-                    {{ _('Cliquez') }} <strong>{{ _('Appliquer / OK') }}</strong>.
-                    {{ _('Les logs apparaîtront dans la page Logs sous quelques secondes.') }}
+                <div class="syslog-step">
+                  <div class="syslog-step__num">2</div>
+                  <div>
+                    <div class="syslog-step__title">{{ _('Activer') }}</div>
+                    <div class="syslog-step__desc"><strong>"Info-center Enable"</strong></div>
+                  </div>
+                </div>
+                <div class="syslog-step">
+                  <div class="syslog-step__num">3</div>
+                  <div>
+                    <div class="syslog-step__title">{{ _('Loghost') }}</div>
+                    <div class="syslog-step__desc">
+                      {{ _('Ajouter') }} — IP : <code style="color:#f90;font-size:.78rem">{{ request.host.split(':')[0] }}</code>
+                      <div class="info-pill" style="margin-top:6px">
+                        <i class="fa-solid fa-circle-info" style="flex-shrink:0;margin-top:1px"></i>
+                        <span>{{ _('Pas de champ port sur AR651W — toujours') }} <strong>UDP 514</strong>.</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="syslog-step">
+                  <div class="syslog-step__num">4</div>
+                  <div>
+                    <div class="syslog-step__title">{{ _('Sauvegarder') }}</div>
+                    <div class="syslog-step__desc"><strong>{{ _('Appliquer / OK') }}</strong></div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+
+          </div><!-- /methods-grid -->
 
         </div>
 
@@ -706,16 +706,6 @@ document.getElementById('btn-1-next').addEventListener('click', () => {
 document.getElementById('btn-2-back').addEventListener('click', () => goStep(1));
 document.getElementById('btn-2-next').addEventListener('click', () => goStep(3));
 document.getElementById('btn-3-back').addEventListener('click', () => goStep(2));
-
-// ── Onglets méthodes syslog ───────────────────────────────────────
-function switchMethod(n) {
-  document.querySelectorAll('.method-tab').forEach((t, i) => {
-    t.classList.toggle('is-active', i + 1 === n);
-  });
-  document.querySelectorAll('.method-pane').forEach((p, i) => {
-    p.classList.toggle('is-active', i + 1 === n);
-  });
-}
 
 // ── SNMP version toggle ───────────────────────────────────────────
 function setupVersionToggle() {
