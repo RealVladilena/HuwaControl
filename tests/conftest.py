@@ -51,13 +51,32 @@ def app():
         socket_mgr_mock = MagicMock()
         socket_mgr_mock.socketio = MagicMock()
 
+        apscheduler_mock     = MagicMock()
+        apscheduler_bg_mock  = MagicMock()
+        apscheduler_bg_mock.BackgroundScheduler.return_value = MagicMock()
+        scheduler_utils_mock = MagicMock()
+        scheduler_utils_mock.scheduler   = MagicMock()
+        scheduler_utils_mock._start_job  = MagicMock()
+        scheduler_utils_mock._stop_job   = MagicMock()
+
+        pysnmp_mock           = MagicMock()
+        snmp_collector_mock   = MagicMock()
+
         with patch.dict("sys.modules", {
-            "syslog_receiver":    syslog_mock,
-            "snmp_trap_receiver": trap_mock,
-            "ping_collector":     ping_mock,
-            "reports":            reports_mock,
-            "flask_socketio":     socketio_lib_mock,
-            "socket_manager":     socket_mgr_mock,
+            "syslog_receiver":                    syslog_mock,
+            "snmp_trap_receiver":                 trap_mock,
+            "ping_collector":                     ping_mock,
+            "reports":                            reports_mock,
+            "flask_socketio":                     socketio_lib_mock,
+            "socket_manager":                     socket_mgr_mock,
+            "apscheduler":                        apscheduler_mock,
+            "apscheduler.schedulers":             apscheduler_mock,
+            "apscheduler.schedulers.background":  apscheduler_bg_mock,
+            "scheduler_utils":                    scheduler_utils_mock,
+            "pysnmp":                             pysnmp_mock,
+            "pysnmp.hlapi":                       pysnmp_mock,
+            "pysnmp.error":                       pysnmp_mock,
+            "snmp_collector":                     snmp_collector_mock,
         }):
             import app as flask_app
             flask_app.app.config.update(
@@ -76,6 +95,12 @@ def client(app):
 
 @pytest.fixture()
 def db_mock(app):
-    """Expose le mock DB pour que les tests puissent configurer les retours."""
+    """Expose le mock DB pour que les tests puissent configurer les retours.
+    Réinitialise les valeurs critiques avant chaque test pour éviter les
+    contaminations entre tests (needs_setup en particulier).
+    """
     import database
+    database.needs_setup.return_value  = False
+    database.get_all_routers.return_value = []
+    database.get_settings.return_value    = {}
     return database

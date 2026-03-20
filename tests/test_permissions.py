@@ -106,13 +106,14 @@ class TestRequireRouterAccess:
             with patch("flask_login.utils._get_user", return_value=user):
                 with patch("permissions.current_user", user):
                     with patch("permissions.db", db_mock):
-                        dec = require_router_access(write=False)
+                        with patch("utils.db", db_mock):
+                            dec = require_router_access(write=False)
 
-                        def inner(rid):
-                            called.append(rid)
-                            return "ok"
+                            def inner(rid):
+                                called.append(rid)
+                                return "ok"
 
-                        result = dec(inner)(rid=5)
+                            result = dec(inner)(rid=5)
 
         assert called == [5]
 
@@ -130,12 +131,13 @@ class TestRequireRouterAccess:
         with mini_app.test_request_context("/test/5"):
             with patch("permissions.current_user", user):
                 with patch("permissions.db", db_mock):
-                    dec = require_router_access(write=True)
+                    with patch("utils.db", db_mock):
+                        dec = require_router_access(write=True)
 
-                    def inner(rid):
-                        return "ok"
+                        def inner(rid):
+                            return "ok"
 
-                    response, status = dec(inner)(rid=5)
+                        response, status = dec(inner)(rid=5)
 
         assert status == 403
 
@@ -153,16 +155,17 @@ class TestRequireRouterAccess:
 
         called = []
 
-        with mini_app.test_request_context("/test/3"):
+        with mini_app.test_request_context("/test/3?router_id=3"):
             with patch("permissions.current_user", user):
                 with patch("permissions.db", db_mock):
-                    dec = require_router_access(write=True)
+                    with patch("utils.db", db_mock):
+                        dec = require_router_access(write=True)
 
-                    def inner(rid):
-                        called.append(rid)
-                        return "ok"
+                        def inner(rid):
+                            called.append(rid)
+                            return "ok"
 
-                    result = dec(inner)(rid=3)
+                        result = dec(inner)(rid=3)
 
         assert called == [3]
 
@@ -178,14 +181,15 @@ class TestRequireRouterAccess:
         db_mock = MagicMock()
         db_mock.get_user_router_perms.return_value = perms
 
-        with mini_app.test_request_context("/test/9"):
+        with mini_app.test_request_context("/test/9?router_id=9"):
             with patch("permissions.current_user", user):
                 with patch("permissions.db", db_mock):
-                    dec = require_router_access(write=False)
+                    with patch("utils.db", db_mock):
+                        dec = require_router_access(write=False)
 
-                    def inner(rid):
-                        return "ok"
+                        def inner(rid):
+                            return "ok"
 
-                    response, status = dec(inner)(rid=9)
+                        response, status = dec(inner)(rid=9)
 
         assert status == 403

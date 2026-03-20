@@ -114,5 +114,5 @@ SYSLOG_HOST_PORT = int(os.getenv("SYSLOG_HOST_PORT", "514"))    # port exposé (
 SNMP_TRAP_PORT   = int(os.getenv("SNMP_TRAP_PORT",   "1162"))
 
 # ─── Version ──────────────────────────────────────────────────────────────────
-APP_VERSION    = "2.3.0"
+APP_VERSION    = "2.3.1"
 APP_BUILD_DATE = "2026-03-20"
