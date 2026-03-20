@@ -113,7 +113,7 @@ def api_status():
     rid = _rid()
     if not rid:
         return jsonify({}), 200
-    sys_data = db.get_latest_system(rid)
+    sys_data = db.get_latest_system(rid) or {}
     ifaces   = db.get_interfaces_latest(rid)
     router   = db.get_router(rid)
     return jsonify({
@@ -1169,6 +1169,42 @@ def api_wifi_clients_history():
     return jsonify(db.get_wifi_client_history(rid, hours=hours))
 
 
+# ── Topologie réseau ──────────────────────────────────────────────────────────
+
+@api_bp.route("/api/topology")
+@login_required
+def api_topology():
+    routers = db.get_enabled_routers()
+    nodes   = []
+    for r in routers:
+        rid      = r["id"]
+        sys_data = db.get_latest_system(rid) or {}
+        ifaces   = db.get_interfaces_latest(rid)
+        events   = db.get_events(router_id=rid, limit=100)
+        unacked  = [e for e in events if not e.get("acked")]
+        errors   = sum(1 for e in unacked if e["level"] == "error")
+        warnings = sum(1 for e in unacked if e["level"] == "warning")
+        ifaces_down = sum(1 for i in ifaces if i.get("if_status") != 1)
+
+        if errors > 0 or ifaces_down > 2:
+            status = "error"
+        elif warnings > 0 or ifaces_down > 0:
+            status = "warn"
+        else:
+            status = "ok"
+
+        nodes.append({
+            "id":     rid,
+            "name":   r["name"],
+            "ip":     r["ip"],
+            "status": status,
+            "cpu":    sys_data.get("cpu_usage"),
+            "mem":    sys_data.get("mem_usage"),
+            "ts":     sys_data.get("ts"),
+        })
+    return jsonify({"nodes": nodes, "edges": []})
+
+
 # ── Dashboard multi-routeurs ──────────────────────────────────────────────────
 
 @api_bp.route("/api/dashboard")
@@ -1178,9 +1214,9 @@ def api_dashboard():
     result  = []
     for r in routers:
         rid      = r["id"]
-        sys_data = db.get_latest_system(rid)
-        ifaces   = db.get_interfaces_latest(rid)
-        events   = db.get_events(router_id=rid, limit=100)
+        sys_data  = db.get_latest_system(rid) or {}
+        ifaces    = db.get_interfaces_latest(rid)
+        events    = db.get_events(router_id=rid, limit=100)
         recent_ev = [e for e in events if not e.get("acked")]
 
         ifaces_up   = sum(1 for i in ifaces if i.get("if_status") == 1)

@@ -39,9 +39,11 @@ ENTRYPOINT ["/app/entrypoint.sh"]
 # Gunicorn — 1 worker (APScheduler tourne dans le même process)
 CMD ["gunicorn", \
      "--bind", "0.0.0.0:5000", \
+     "--worker-class", "gthread", \
      "--workers", "1", \
      "--threads", "4", \
-     "--timeout", "60", \
+     "--timeout", "120", \
+     "--worker-tmp-dir", "/dev/shm", \
      "--access-logfile", "-", \
      "--error-logfile", "-", \
      "app:app"]

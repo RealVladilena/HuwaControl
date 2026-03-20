@@ -481,12 +481,23 @@ document.querySelectorAll('#alert-period-group .btn-period').forEach(btn => {
 });
 
 loadOverview();
-setInterval(loadOverview, 30000);
-setInterval(loadWanChart, 30000);
 
 document.addEventListener('routerChanged', () => {
   loadOverview(); loadVpn(); loadHeatmap();
   if (chartMode === 'wan') loadWanChart();
 });
+
+// Rafraîchissement via WebSocket — fallback polling si socket.io indisponible
+(function () {
+  if (typeof io !== 'undefined') {
+    document.addEventListener('snmpPolled', () => {
+      loadOverview();
+      if (chartMode === 'wan') loadWanChart();
+    });
+  } else {
+    setInterval(loadOverview, 30000);
+    setInterval(loadWanChart, 30000);
+  }
+})();
 </script>
 {% endblock %}

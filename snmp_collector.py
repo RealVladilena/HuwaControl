@@ -1177,5 +1177,20 @@ def poll(router: dict) -> None:
         log.info("[%s] OK — CPU:%s%% MEM:%s%% ifaces:%d",
                  router["name"], sys_data.get("cpu_usage"),
                  sys_data.get("mem_usage"), len(ifaces))
+        try:
+            from socket_manager import socketio
+            ifaces_up = sum(1 for i in ifaces if i.get("if_status") == 1)
+            socketio.emit("router_update", {
+                "router_id":    rid,
+                "router_name":  router["name"],
+                "router_ip":    router["ip"],
+                "cpu":          sys_data.get("cpu_usage"),
+                "mem":          sys_data.get("mem_usage"),
+                "ts":           int(time.time()),
+                "ifaces_up":    ifaces_up,
+                "ifaces_total": len(ifaces),
+            })
+        except Exception:
+            pass
     except Exception as e:
         log.error("[%s] Erreur collecte: %s", router["name"], e)

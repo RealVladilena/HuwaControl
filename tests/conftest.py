@@ -46,11 +46,18 @@ def app():
         ping_mock   = MagicMock()
         reports_mock = MagicMock()
 
+        socketio_lib_mock = MagicMock()
+        socketio_lib_mock.SocketIO.return_value = MagicMock()
+        socket_mgr_mock = MagicMock()
+        socket_mgr_mock.socketio = MagicMock()
+
         with patch.dict("sys.modules", {
             "syslog_receiver":    syslog_mock,
             "snmp_trap_receiver": trap_mock,
             "ping_collector":     ping_mock,
             "reports":            reports_mock,
+            "flask_socketio":     socketio_lib_mock,
+            "socket_manager":     socket_mgr_mock,
         }):
             import app as flask_app
             flask_app.app.config.update(

@@ -192,8 +192,44 @@ function refreshTopbar() {
 }
 
 refreshTopbar();
-setInterval(refreshTopbar, 30000);
 document.addEventListener('routerChanged', refreshTopbar);
+
+// ── WebSocket temps réel ───────────────────────────────────────────────────────
+(function () {
+  if (typeof io === 'undefined') {
+    setInterval(refreshTopbar, 30000);
+    return;
+  }
+  const _sock = io({ transports: ['websocket', 'polling'] });
+
+  _sock.on('connect', () => {
+    const dot = document.querySelector('#conn-indicator .dot');
+    if (dot) dot.classList.add('dot--ws');
+  });
+
+  _sock.on('router_update', (d) => {
+    const rid = getActiveRouter();
+    if (rid && d.router_id !== rid) return;
+
+    const cpuEl = document.getElementById('hdr-cpu-val');
+    if (cpuEl && d.cpu != null) cpuEl.textContent = d.cpu.toFixed(1) + '%';
+    const memEl = document.getElementById('hdr-mem-val');
+    if (memEl && d.mem != null) memEl.textContent = d.mem.toFixed(1) + '%';
+
+    const dot   = document.querySelector('#conn-indicator .dot');
+    const label = document.getElementById('conn-label');
+    if (dot)   dot.className   = 'dot dot--up dot--ws';
+    if (label) label.textContent = d.router_ip || d.router_name || 'En ligne';
+
+    if (d.ts) updateLastPoll(d.ts);
+
+    document.dispatchEvent(new CustomEvent('snmpPolled', { detail: d }));
+  });
+
+  _sock.on('disconnect', () => {
+    setInterval(refreshTopbar, 30000);
+  });
+})();
 
 // ── Toast notifications ────────────────────────────────────────────────────────
 (function () {

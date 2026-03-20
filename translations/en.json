@@ -16,6 +16,8 @@
   "30 jours": "30 days",
   "Rapport": "Report",
   "Comparaison": "Compare",
+  "Vue globale": "Global View",
+  "Topologie": "Topology",
   "ADMINISTRATION": "ADMINISTRATION",
   "Routeurs": "Routers",
   "Notifications": "Notifications",
@@ -514,6 +516,14 @@
   "Syslog": "Syslog",
   "Logs 24h": "Logs 24h",
   "Clients ARP": "ARP Clients",
+
+  "── Topologie ───────────────────────────────────────────────────────────────": "",
+  "Topologie réseau": "Network Topology",
+  "Carte visuelle des routeurs — mise à jour en temps réel": "Visual map of routers — real-time updates",
+  "Chargement…": "Loading…",
+  "Dernier poll": "Last poll",
+  "Alerte": "Warning",
+  "Erreur": "Error",
 
   "── Commun ──────────────────────────────────────────────────────────────────": "",
   "Chargement": "Loading",

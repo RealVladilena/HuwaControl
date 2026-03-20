@@ -10,6 +10,7 @@
   <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
   <meta name="theme-color" content="#121212">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/socket.io@4.7.5/client-dist/socket.io.min.js"></script>
 </head>
 <body>
 
@@ -163,6 +164,11 @@
         <li class="nav__item {% if active_page=='dashboard' %}nav__item--active{% endif %}">
           <a href="{{ url_for('main.dashboard') }}">
             <i class="fa-solid fa-table-cells-large"></i><span>{{ _('Vue globale') }}</span>
+          </a>
+        </li>
+        <li class="nav__item {% if active_page=='topology' %}nav__item--active{% endif %}">
+          <a href="{{ url_for('main.topology') }}">
+            <i class="fa-solid fa-network-wired"></i><span>{{ _('Topologie') }}</span>
           </a>
         </li>
 

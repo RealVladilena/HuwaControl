@@ -17,6 +17,7 @@ import snmp_trap_receiver as trap_recv
 import i18n as _i18n
 from models import User
 from scheduler_utils import scheduler, _start_job
+from socket_manager import socketio
 
 logging.basicConfig(
     level=logging.DEBUG if config.DEBUG else logging.INFO,
@@ -64,6 +65,8 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(main_bp)
 app.register_blueprint(api_bp)
 app.register_blueprint(metrics_bp)
+
+socketio.init_app(app, async_mode="threading", cors_allowed_origins="*")
 
 # ─── Security headers ─────────────────────────────────────────────────────────
 

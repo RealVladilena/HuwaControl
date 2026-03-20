@@ -179,3 +179,9 @@ def compare_page():
 @login_required
 def dashboard():
     return render_template("dashboard.html", active_page="dashboard")
+
+
+@main_bp.route("/topology")
+@login_required
+def topology():
+    return render_template("topology.html", active_page="topology")
