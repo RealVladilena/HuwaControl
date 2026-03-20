@@ -6,6 +6,7 @@
   <title>{% block title %}HuwaControl{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
   <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
   <meta name="theme-color" content="#121212">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -21,7 +22,9 @@
           <i class="fa-solid fa-bars"></i>
         </button>
         <div class="topbar__logo">
-          <span class="topbar__logo-icon"><i class="fa-solid fa-network-wired"></i></span>
+          <img src="{{ url_for('static', filename='img/favicon.svg') }}"
+               alt="HuwaControl" width="22" height="22"
+               style="display:block;flex-shrink:0">
           <span class="topbar__logo-text">HuwaControl</span>
         </div>
 

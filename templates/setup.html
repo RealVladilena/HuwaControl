@@ -6,6 +6,7 @@
   <title>{{ _('Installation — HuwaControl') }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
   <style>
     html, body { height: 100%; margin: 0; }
 
@@ -328,7 +329,10 @@
 
     <!-- Logo -->
     <div class="setup-logo">
-      <div class="setup-logo__icon"><i class="fa-solid fa-network-wired"></i></div>
+      <div class="setup-logo__icon">
+        <img src="{{ url_for('static', filename='img/favicon.svg') }}"
+             alt="HuwaControl" width="28" height="28" style="display:block">
+      </div>
       <div class="setup-logo__name">HuwaControl</div>
       <div class="setup-logo__sub">{{ _('Configuration initiale') }}</div>
     </div>
