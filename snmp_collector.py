@@ -8,12 +8,13 @@ import time
 
 from pysnmp.hlapi import (
     CommunityData, ContextData, ObjectIdentity, ObjectType,
-    SnmpEngine, UdpTransportTarget, getCmd, nextCmd,
+    SnmpEngine, UdpTransportTarget, getCmd, nextCmd, bulkCmd,
     UsmUserData,
     usmHMACMD5AuthProtocol, usmHMACSHAAuthProtocol,
     usmDESPrivProtocol, usmAesCfb128Protocol,
     usmNoAuthProtocol, usmNoPrivProtocol,
 )
+from pysnmp.error import PySnmpError
 
 _AUTH_PROTO = {
     "MD5":  usmHMACMD5AuthProtocol,
@@ -25,6 +26,8 @@ _PRIV_PROTO = {
     "AES":    usmAesCfb128Protocol,
     "AES128": usmAesCfb128Protocol,
 }
+
+import json
 
 import config
 import database as db
@@ -52,6 +55,49 @@ _prev_ospf_states: dict = {}
 
 # {router_id: set of active WAN if_names}  — suivi failover WAN
 _prev_active_wan: dict = {}
+
+
+_state_loaded = False
+
+
+def _load_state() -> None:
+    """Charge les états d'alerte depuis la DB au premier poll (évite les faux positifs après restart)."""
+    global _state_loaded
+    if _state_loaded:
+        return
+    _state_loaded = True
+    try:
+        states = db.get_all_alert_states()
+        now = time.time()
+
+        # Cooldowns : ignorer les entrées > 1h (forcément expirées)
+        if "cooldown" in states:
+            raw = json.loads(states["cooldown"])
+            _alert_cooldown.update({k: v for k, v in raw.items() if now - v < 3600})
+
+        # Statuts d'interfaces : {router_id:if_index → status}
+        if "if_status" in states:
+            for k, v in json.loads(states["if_status"]).items():
+                rid_s, idx_s = k.split(":")
+                _prev_if_status[(int(rid_s), int(idx_s))] = v
+
+        log.info("État des alertes chargé depuis la DB (%d cooldowns, %d statuts ifaces)",
+                 len(_alert_cooldown), len(_prev_if_status))
+    except Exception as e:
+        log.warning("Impossible de charger l'état des alertes: %s", e)
+
+
+def _flush_state() -> None:
+    """Persiste les états d'alerte en DB à la fin de chaque cycle de poll."""
+    try:
+        db.set_alert_state("cooldown", json.dumps(_alert_cooldown))
+        if_status_serial = {
+            f"{rid}:{idx}": v
+            for (rid, idx), v in _prev_if_status.items()
+        }
+        db.set_alert_state("if_status", json.dumps(if_status_serial))
+    except Exception as e:
+        log.debug("Flush alert state error: %s", e)
 
 
 def _cooldown_ok(key: str) -> bool:
@@ -107,23 +153,41 @@ def snmp_get(router: dict, oid: str):
             log.debug("[%s] GET %s → %s %s", router["name"], oid, err_ind, err_stat)
             return None
         return var_binds[0][1]
-    except Exception as e:
+    except (PySnmpError, OSError) as e:
         log.error("[%s] snmp_get(%s): %s", router["name"], oid, e)
         return None
 
 
+def snmp_get_multi(router: dict, oids: list) -> list:
+    """Récupère plusieurs OIDs en une seule requête GET. Retourne une liste de valeurs (None si erreur)."""
+    try:
+        err_ind, err_stat, _, var_binds = next(
+            getCmd(SnmpEngine(), _auth_data(router), _transport(router), ContextData(),
+                   *[ObjectType(ObjectIdentity(oid)) for oid in oids])
+        )
+        if err_ind or err_stat:
+            log.debug("[%s] GET-MULTI → %s %s", router["name"], err_ind, err_stat)
+            return [None] * len(oids)
+        return [vb[1] for vb in var_binds]
+    except (PySnmpError, OSError) as e:
+        log.error("[%s] snmp_get_multi: %s", router["name"], e)
+        return [None] * len(oids)
+
+
 def snmp_walk(router: dict, base_oid: str) -> list:
+    """Walk SNMP via GetBulk (SNMPv2c/v3). maxRepetitions=25 réduit les round-trips."""
     results = []
     try:
-        for err_ind, err_stat, _, var_binds in nextCmd(
+        for err_ind, err_stat, _, var_binds in bulkCmd(
             SnmpEngine(), _auth_data(router), _transport(router), ContextData(),
+            0, 25,
             ObjectType(ObjectIdentity(base_oid)), lexicographicMode=False,
         ):
             if err_ind or err_stat:
                 break
             for vb in var_binds:
                 results.append((str(vb[0]), vb[1]))
-    except Exception as e:
+    except (PySnmpError, OSError) as e:
         log.error("[%s] snmp_walk(%s): %s", router["name"], base_oid, e)
     return results
 
@@ -131,25 +195,30 @@ def snmp_walk(router: dict, base_oid: str) -> list:
 def _int(v):
     try:
         return int(v)
-    except Exception:
+    except (TypeError, ValueError):
         return None
 
 
 def _float(v):
     try:
         return float(v)
-    except Exception:
+    except (TypeError, ValueError):
         return None
 
 
 # ─── Collecte ─────────────────────────────────────────────────────────────────
 
 def collect_system(router: dict) -> dict:
+    # Récupère les 4 OIDs scalaires en une seule requête GET
+    sys_vals = snmp_get_multi(router, [
+        config.OID_SYS_NAME, config.OID_SYS_DESCR,
+        config.OID_SYS_UPTIME, config.OID_SYS_LOCATION,
+    ])
     data = {
-        "sys_name":    str(snmp_get(router, config.OID_SYS_NAME)     or ""),
-        "sys_descr":   str(snmp_get(router, config.OID_SYS_DESCR)    or ""),
-        "sys_uptime":  _int(snmp_get(router, config.OID_SYS_UPTIME)),
-        "location":    str(snmp_get(router, config.OID_SYS_LOCATION) or ""),
+        "sys_name":    str(sys_vals[0] or ""),
+        "sys_descr":   str(sys_vals[1] or ""),
+        "sys_uptime":  _int(sys_vals[2]),
+        "location":    str(sys_vals[3] or ""),
         "cpu_usage":   None,
         "mem_usage":   None,
         "temperature": None,
@@ -247,7 +316,7 @@ def _fmt_mac(val) -> str:
     try:
         raw = bytes(val)
         return ":".join(f"{b:02x}" for b in raw)
-    except Exception:
+    except (TypeError, ValueError, AttributeError):
         return str(val)
 
 
@@ -314,7 +383,7 @@ def collect_ike_sas(router: dict) -> list:
             if   col == "2": entry["name"]   = str(val)
             elif col == "4": entry["remote"] = _ip_str(val)
             elif col == "6": entry["status"] = _int(val)   # 1=established
-    except Exception:
+    except (PySnmpError, OSError):
         pass
     return [
         {"name": v.get("name", f"SA-{k}"), "remote": v.get("remote"), "status": v.get("status", 0)}
@@ -671,14 +740,14 @@ def _ip_str(val) -> str:
         raw = bytes(val)
         if len(raw) == 4:
             return ".".join(str(b) for b in raw)
-    except Exception:
+    except (TypeError, ValueError):
         pass
     # Méthode 2 : prettyPrint (retourne la notation dotted sur pysnmplib)
     try:
         pp = val.prettyPrint()
         if pp and "." in pp:
             return pp
-    except Exception:
+    except AttributeError:
         pass
     return str(val)
 
@@ -716,9 +785,9 @@ def collect_bgp_neighbors(router: dict) -> list:
                 entry = peers.setdefault(peer_ip, {"peer_ip": peer_ip})
                 try:
                     entry[field] = converter(val)
-                except Exception:
+                except (TypeError, ValueError):
                     pass
-    except Exception:
+    except (PySnmpError, OSError):
         return []
     return [
         {
@@ -754,9 +823,9 @@ def collect_ospf_neighbors(router: dict) -> list:
                 entry = nbrs.setdefault(key, {})
                 try:
                     entry[field] = converter(val)
-                except Exception:
+                except (TypeError, ValueError):
                     pass
-    except Exception:
+    except (PySnmpError, OSError):
         return []
     return [
         {
@@ -799,7 +868,7 @@ def collect_dhcp_leases(router: dict) -> list:
                 entry["ttl"] = _int(val)
             elif col == "9":
                 entry["vrf"] = str(val).strip() or "default"
-    except Exception:
+    except (PySnmpError, OSError):
         return []
     return [
         {
@@ -831,7 +900,7 @@ def collect_dhcp_pool_stats(router: dict) -> list:
             elif col == "4": entry["total"]     = _int(val)
             elif col == "5": entry["used"]      = _int(val)
             elif col == "6": entry["idle"]      = _int(val)
-    except Exception:
+    except (PySnmpError, OSError):
         return []
     result = []
     for v in pools.values():
@@ -927,7 +996,7 @@ def collect_lte(router: dict) -> dict | None:
             "access_mode": access_mode, # ex: "LTE", "NR" (5G)
             "sim_status":  sim_status,  # 1=présente/active
         }
-    except Exception as e:
+    except (PySnmpError, OSError) as e:
         log.debug("[%s] collect_lte: %s", router["name"], e)
         return None
 
@@ -954,7 +1023,7 @@ def collect_wifi_radio(router: dict) -> list:
             }
             for idx in sorted(channels.keys())
         ]
-    except Exception as e:
+    except (PySnmpError, OSError) as e:
         log.debug("[%s] collect_wifi_radio: %s", router["name"], e)
         return []
 
@@ -964,6 +1033,7 @@ def collect_wifi_radio(router: dict) -> list:
 def poll(router: dict) -> None:
     rid = router["id"]
     log.info("[%s] Collecte SNMP → %s", router["name"], router["ip"])
+    _load_state()
     try:
         sys_data = collect_system(router)
         db.insert_system(rid, sys_data)
@@ -1093,8 +1163,17 @@ def poll(router: dict) -> None:
         except Exception as _e:
             log.debug("[%s] DHCP pool check error: %s", router["name"], _e)
 
-        db.purge_old(rid, router.get("retention_days", 30))
-        db.purge_events(days=router.get("retention_days", 30))
+        _flush_state()
+        retention = router.get("retention_days", 30)
+        db.purge_old(rid, retention)
+        db.purge_events(days=retention)
+        db.purge_lte(rid, retention)
+        db.purge_wifi_radio(rid, retention)
+        db.purge_wifi_client_history(rid, retention)
+        db.purge_wan_sla(rid, retention)
+        db.purge_custom_oid_values(days=retention)
+        db.purge_syslogs(days=retention)
+        db.purge_ping_results(days=retention)
         log.info("[%s] OK — CPU:%s%% MEM:%s%% ifaces:%d",
                  router["name"], sys_data.get("cpu_usage"),
                  sys_data.get("mem_usage"), len(ifaces))

@@ -487,6 +487,15 @@ def init_db() -> None:
             "CREATE INDEX IF NOT EXISTS idx_customval_poll_ts ON custom_oid_values(poll_id, ts DESC)"
         )
 
+        # Table de persistance des états d'alerte (cooldown + statuts interfaces)
+        _cur(conn).execute("""
+            CREATE TABLE IF NOT EXISTS alert_state (
+                key        TEXT PRIMARY KEY,
+                value      TEXT NOT NULL,
+                updated_at BIGINT NOT NULL
+            );
+        """)
+
         # Migration arp_history : colonnes is_known + alerted
         for col, defn in [("is_known", "BOOLEAN NOT NULL DEFAULT false"),
                           ("alerted",  "BOOLEAN NOT NULL DEFAULT false")]:
@@ -773,6 +782,30 @@ def purge_old(router_id: int, retention_days: int) -> None:
         cur.execute("DELETE FROM system_metrics  WHERE router_id=%s AND ts<%s", (router_id, cutoff))
         cur.execute("DELETE FROM interface_stats WHERE router_id=%s AND ts<%s", (router_id, cutoff))
         cur.execute("DELETE FROM interface_bps   WHERE router_id=%s AND ts<%s", (router_id, cutoff))
+
+
+def purge_lte(router_id: int, days: int) -> None:
+    cutoff = int(time.time()) - days * 86400
+    with get_db() as conn:
+        _cur(conn).execute("DELETE FROM lte_metrics WHERE router_id=%s AND ts<%s", (router_id, cutoff))
+
+
+def purge_wifi_radio(router_id: int, days: int) -> None:
+    cutoff = int(time.time()) - days * 86400
+    with get_db() as conn:
+        _cur(conn).execute("DELETE FROM wifi_radio WHERE router_id=%s AND ts<%s", (router_id, cutoff))
+
+
+def purge_wifi_client_history(router_id: int, days: int) -> None:
+    cutoff = int(time.time()) - days * 86400
+    with get_db() as conn:
+        _cur(conn).execute("DELETE FROM wifi_client_history WHERE router_id=%s AND ts<%s", (router_id, cutoff))
+
+
+def purge_wan_sla(router_id: int, days: int) -> None:
+    cutoff = int(time.time()) - days * 86400
+    with get_db() as conn:
+        _cur(conn).execute("DELETE FROM wan_sla WHERE router_id=%s AND ts<%s", (router_id, cutoff))
 
 
 # ─── Lecture métriques ────────────────────────────────────────────────────────
@@ -1800,4 +1833,24 @@ def mark_mac_known(router_id: int, mac: str) -> None:
             "UPDATE arp_history SET is_known=true, alerted=true "
             "WHERE router_id=%s AND mac=%s",
             (router_id, mac.upper())
+        )
+
+
+# ─── Persistance des états d'alerte ──────────────────────────────────────────
+
+def get_all_alert_states() -> dict:
+    """Charge tous les états d'alerte depuis la DB. Retourne {key: value}."""
+    with get_db() as conn:
+        cur = _cur(conn)
+        cur.execute("SELECT key, value FROM alert_state")
+        return {r["key"]: r["value"] for r in cur.fetchall()}
+
+
+def set_alert_state(key: str, value: str) -> None:
+    """Persiste un état d'alerte (upsert)."""
+    with get_db() as conn:
+        _cur(conn).execute(
+            "INSERT INTO alert_state (key, value, updated_at) VALUES (%s,%s,%s) "
+            "ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=EXCLUDED.updated_at",
+            (key, value, int(time.time()))
         )
