@@ -9,7 +9,26 @@
 <h1 align="center">HuwaControl</h1>
 <p align="center">
   Network monitoring dashboard for <strong>Huawei AR Series</strong> routers<br>
-  SNMP · Syslog · Ping SLA · Discord/Telegram alerts · Dark web UI
+  SNMPv3 · Syslog · Ping SLA · Discord/Telegram alerts · Dark web UI
+</p>
+
+---
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" alt="Dashboard" width="100%" />
+  <br><em>Dashboard — CPU, RAM, temperature, uptime, interface traffic in real time</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/interfaces.png" alt="Interfaces" width="100%" />
+  <br><em>Interfaces — Status, traffic graphs, custom aliases</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/syslog.png" alt="Syslog" width="100%" />
+  <br><em>Syslog — UDP receiver, filtering, pagination, 24h statistics</em>
 </p>
 
 ---
@@ -22,7 +41,7 @@
 | **Interfaces** | Status, bps/pps traffic, history graphs, custom aliases |
 | **Syslog** | UDP receiver (RFC 3164/5424), filtering, pagination, statistics |
 | **Ping / SLA** | ICMP probes, SLA %, average RTT, history |
-| **SNMP Traps** | Built-in receiver (SNMPv1/v2c) |
+| **SNMP Traps** | Built-in receiver (SNMPv1/v2c/v3) |
 | **BGP / OSPF** | Neighbor state, uptime, prefixes |
 | **Clients** | Live ARP table, MAC history, DHCP leases |
 | **Alerts** | Discord webhooks, Telegram bots, SMTP email |
@@ -38,23 +57,27 @@ Copy and paste `docker-compose.yml` — no other files needed.
 docker compose up -d
 ```
 
-Access: **http://localhost:8080**  
+Access: **http://localhost:8080**
 First login → setup wizard.
 
 ## Router configuration
 
 **SNMP (required)**
+
+SNMPv3 is recommended for security. You can configure it directly from the **router panel** in HuwaControl after the initial setup.
+
 ```
 snmp-agent
-snmp-agent community read <COMMUNITY>
-snmp-agent sys-info version v2c
+snmp-agent usm-user v3 <USERNAME>
+snmp-agent usm-user v3 <USERNAME> authentication-mode sha <AUTH_PASSWORD>
+snmp-agent usm-user v3 <USERNAME> privacy-mode aes128 <PRIV_PASSWORD>
+snmp-agent sys-info version v3
 ```
 
 **Syslog (optional)**
-```
-info-center enable
-info-center loghost <SERVER_IP> facility local6
-```
+
+Syslog can be configured directly from the **router panel** in HuwaControl — no CLI required.
+The setup wizard also includes a step-by-step guide on first boot.
 
 ## Environment variables
 
