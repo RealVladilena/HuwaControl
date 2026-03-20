@@ -99,6 +99,8 @@ OID_OSPF_NBR_EVENTS  = "1.3.6.1.2.1.14.10.1.9"
 # ─── DHCP Server Huawei ───────────────────────────────────────────────────────
 OID_HW_DHCP_LEASE    = "1.3.6.1.4.1.2011.6.8.1.5.1"   # hwDhcpServerStatClientLeaseTable
 # Colonnes : .1=MAC, .2=IP, .3=type(1=dynamic), .5=ttl_remaining_sec, .9=vrf
+OID_HW_DHCP_POOL     = "1.3.6.1.4.1.2011.6.8.1.1.1"   # hwDhcpServerPoolTable
+# Colonnes : .3=pool_name, .4=total_addrs, .5=used_addrs, .6=idle_addrs
 
 # ─── SNMP Trap standard OIDs ─────────────────────────────────────────────────
 OID_TRAP_SYSUPTIME   = "1.3.6.1.2.1.1.3.0"

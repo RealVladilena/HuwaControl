@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Tableau de bord global') }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title"><i class="fa-solid fa-grid-2"></i> {{ _('Tableau de bord global') }}</h1>
+  <span class="page-subtitle">{{ _('Synthèse de tous les routeurs') }}</span>
+</div>
+
+<div id="dashboard-grid" class="dashboard-grid">
+  <div class="txt-muted txt-center" style="grid-column:1/-1;padding:40px">
+    <i class="fa-solid fa-spinner fa-spin"></i> {{ _('Chargement…') }}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function fmtPct(v) {
+  return v !== null && v !== undefined ? v.toFixed(0) + '%' : '—';
+}
+function fmtSla(v) {
+  return v !== null && v !== undefined ? v.toFixed(2) + '%' : '—';
+}
+function barColor(pct) {
+  if (pct === null || pct === undefined) return 'var(--clr-muted)';
+  if (pct >= 90) return 'var(--clr-down)';
+  if (pct >= 70) return '#FEE75C';
+  return 'var(--clr-up)';
+}
+function statusBadge(st, inMaint) {
+  if (inMaint) return '<span class="badge badge--neutral"><i class="fa-solid fa-wrench"></i> Maintenance</span>';
+  if (st === 'ok')    return '<span class="badge badge--up">OK</span>';
+  if (st === 'warn')  return '<span class="badge" style="background:rgba(254,231,92,.15);color:#FEE75C">⚠ Alerte</span>';
+  return '<span class="badge badge--down">Erreur</span>';
+}
+function cardBorder(st, inMaint) {
+  if (inMaint) return 'border-color:rgba(120,120,120,.4)';
+  if (st === 'ok')    return 'border-color:rgba(87,242,135,.3)';
+  if (st === 'warn')  return 'border-color:rgba(254,231,92,.3)';
+  return 'border-color:rgba(237,66,69,.4)';
+}
+
+function buildCard(r) {
+  const age = r.last_seen ? Math.round((Date.now()/1000 - r.last_seen) / 60) : null;
+  const ageStr = age !== null ? (age < 2 ? '< 1 min' : age + ' min') : '—';
+  return `
+    <div class="card dash-card" style="${cardBorder(r.status, r.in_maintenance)}">
+      <div class="dash-card__head">
+        <span class="dash-card__name">${r.name}</span>
+        ${statusBadge(r.status, r.in_maintenance)}
+      </div>
+      <div class="txt-muted" style="font-size:.78rem;margin-bottom:8px">${r.ip} · dernière collecte ${ageStr}</div>
+
+      <div class="dash-metrics">
+        <div class="dash-metric">
+          <span class="dash-metric__label">CPU</span>
+          <span class="dash-metric__val">${fmtPct(r.cpu)}</span>
+          <div class="kpi-card__bar" style="height:4px;margin-top:2px">
+            <div class="kpi-card__bar-fill" style="width:${r.cpu||0}%;background:${barColor(r.cpu)}"></div>
+          </div>
+        </div>
+        <div class="dash-metric">
+          <span class="dash-metric__label">RAM</span>
+          <span class="dash-metric__val">${fmtPct(r.mem)}</span>
+          <div class="kpi-card__bar" style="height:4px;margin-top:2px">
+            <div class="kpi-card__bar-fill" style="width:${r.mem||0}%;background:${barColor(r.mem)}"></div>
+          </div>
+        </div>
+        <div class="dash-metric">
+          <span class="dash-metric__label">Temp.</span>
+          <span class="dash-metric__val">${r.temp !== null ? r.temp.toFixed(0)+'°C' : '—'}</span>
+        </div>
+        <div class="dash-metric">
+          <span class="dash-metric__label">Uptime</span>
+          <span class="dash-metric__val">${r.uptime || '—'}</span>
+        </div>
+      </div>
+
+      <div class="dash-row mt-2">
+        <i class="fa-solid fa-plug txt-muted" style="font-size:.8rem"></i>
+        <span style="font-size:.85rem;margin-left:4px">
+          <span class="txt-green">${r.ifaces_up}</span>
+          <span class="txt-muted"> / ${r.ifaces_total} UP</span>
+        </span>
+        ${r.wan_sla !== null ? `<span class="badge badge--neutral" style="margin-left:8px;font-size:.75rem">SLA ${fmtSla(r.wan_sla)}</span>` : ''}
+        ${r.errors   ? `<span class="badge badge--down"    style="margin-left:8px;font-size:.75rem">🚨 ${r.errors}</span>`   : ''}
+        ${r.warnings ? `<span class="badge" style="margin-left:8px;font-size:.75rem;background:rgba(254,231,92,.15);color:#FEE75C">⚠ ${r.warnings}</span>` : ''}
+      </div>
+
+      <div class="dash-card__footer">
+        <a href="/?router_id=${r.id}" class="btn btn--ghost" style="font-size:.8rem;padding:3px 8px">
+          <i class="fa-solid fa-gauge-high"></i> Détails
+        </a>
+        <a href="/interfaces?router_id=${r.id}" class="btn btn--ghost" style="font-size:.8rem;padding:3px 8px">
+          <i class="fa-solid fa-diagram-project"></i> Interfaces
+        </a>
+      </div>
+    </div>`;
+}
+
+function loadDashboard() {
+  fetch('/api/dashboard')
+    .then(r => r.json())
+    .then(data => {
+      const grid = document.getElementById('dashboard-grid');
+      if (!data.length) {
+        grid.innerHTML = '<div class="txt-muted txt-center" style="grid-column:1/-1;padding:40px">Aucun routeur actif.</div>';
+        return;
+      }
+      grid.innerHTML = data.map(buildCard).join('');
+    })
+    .catch(() => {});
+}
+
+loadDashboard();
+setInterval(loadDashboard, 30000);
+</script>
+{% endblock %}
